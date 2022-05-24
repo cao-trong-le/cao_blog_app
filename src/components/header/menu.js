@@ -4,14 +4,22 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components"
 import { useWindowDimensions } from "hooks";
-import { F } from "caniuse-lite/data/agents";
+
+import * as userActions from "redux_actions/userActions";
+import { useDispatch, useSelector } from "react-redux";
 
 const HeaderComponent = (props) => {
     const [burger, setBurger] = useState(false)
-    const [login, setLogin] = useState(false)
     const { width } = useWindowDimensions()
     const [directionsList, setDirectionsList] = useState([])
     const [searchKey, setSearchKey] = useState("")
+
+    const dispatch = useDispatch()
+    const user = useSelector((state) => state.user)
+
+    useEffect(() => {
+        console.log(user)
+    }, [])
 
     let directions = [
         {
@@ -19,6 +27,12 @@ const HeaderComponent = (props) => {
             name: "home",
             icon: <i className="fas fa-home"></i>,
             url: "/home/posts/"
+        },
+        {
+            title: "New Post",
+            name: "new_post",
+            icon: <i className="far fa-edit"></i>,
+            url: "/new/post/"
         },
         {
             title: "About Me",
@@ -56,10 +70,10 @@ const HeaderComponent = (props) => {
         let hide_lists = null
         let copied = [...directions]
 
-        if (login) 
+        if (user.login) 
             hide_lists = ["log_in", "register"]
         else 
-            hide_lists = ["log_out"]
+            hide_lists = ["log_out", "about_me", "home", "contact_me", "log_in"]
 
         for (let hide of hide_lists) {
             let find_item = (item) => item.name === hide
@@ -69,15 +83,38 @@ const HeaderComponent = (props) => {
 
         setDirectionsList(() => [...copied])
 
-    }, [login])
+    }, [user.login])
 
     const renderListItemsInMenu = () => {
         return directionsList.map((item, index) => {
             return (
-                <Link className="direct-link" to={item.url}>
+                <Link 
+                    className="direct-link" 
+                    onClick={(() => {
+                        if (item.name === "log_out") 
+                            dispatch(userActions.logoutUser())
+                        if (item.name === "log_in") 
+                            dispatch(userActions.loginUser())
+                    })}
+                    to={item.url}>
                     <DirectWrapper className="direct-wrapper" key={index}>
                         <Link to={item.url}>
-                            {item.icon}
+                            {(() => {
+                                if (item.name === "about_me")
+                                    return <i 
+                                        style={{
+                                            height: "35px",
+                                            width: "35px",
+                                            backgroundImage: `url("${user.info.avatar}")`,
+                                            backgroundRepeat: "no-repeat",
+                                            backgroundPosition: "center",
+                                            backgroundSize: "100% 100%",
+                                            backgroundColor: "black",
+                                            borderRadius: "50%",
+                                        }}/>
+                                else 
+                                    return item.icon
+                            })()}
                             <p>{item.title}</p>
                         </Link>
                     </DirectWrapper>
@@ -90,15 +127,14 @@ const HeaderComponent = (props) => {
         return (
             <DesktopNavSection>
                 <SearchSection>
-                    <div className="search-bar-wrapper">
+                    {user.login && <div className="search-bar-wrapper">
                         <input 
                             type="text" 
                             value={searchKey}
                             onChange={((e) => {setSearchKey(e.target.value)})}
                             placeholder="Search..." />
                         <i className="fa fa-search" />
-                    </div>
-                    {/* <i className="fa-solid fa-magnifying-glass"></i> */}
+                    </div>}
                 </SearchSection>
                 {renderListItemsInMenu()}
             </DesktopNavSection>
@@ -106,32 +142,42 @@ const HeaderComponent = (props) => {
     }
 
     return (
-        <HeaderWrapper burger={burger} windowWidth={width}>
-            <LogoSection></LogoSection>
-            {(width > 600) && renderDesktopNav()}
-
+        <HeaderWrapper login={user.login}>
+            <LogoSection login={user.login}>
+                <div className="logo"></div>
+            </LogoSection>
             {(() => {
-                if (width > 600) {
-                    return renderDesktopNav()
-                } 
-                
-                else if (width < 600 && burger) {
-                    return renderDesktopNav()
-                } 
-                
-                // else if (width < 768 && !burger) {
-                //     return <React.Fragment></React.Fragment>
-                // }
+                if (user.login) {
+                    return (
+                        <React.Fragment>
+                            {(width > 600) && renderDesktopNav()}
+
+                            {(() => {
+                                if (width > 600) {
+                                    return renderDesktopNav()
+                                } 
+                                
+                                else if (width < 600 && burger) {
+                                    return renderDesktopNav()
+                                } 
+                                
+                                // else if (width < 768 && !burger) {
+                                //     return <React.Fragment></React.Fragment>
+                                // }
+                            })()}
+
+                            {(width < 600) && <MobileNavSection>
+                                <i  
+                                    className={`${burger ? "fas fa-times" : "fas fa-bars"} burger-icon-wapper`}
+                                    onClick={() => {
+                                        setBurger(!burger)
+                                    }} />
+
+                            </MobileNavSection>}
+                        </React.Fragment>
+                    )
+                }
             })()}
-
-            {(width < 600) && <MobileNavSection>
-                <i  
-                    className={`${burger ? "fas fa-times" : "fas fa-bars"} burger-icon-wapper`}
-                    onClick={() => {
-                        setBurger(!burger)
-                    }} />
-
-            </MobileNavSection>}
         </HeaderWrapper>
     )
 }
@@ -144,20 +190,30 @@ const HeaderWrapper = styled.div`
     height: auto;
     min-height: 80px;
     width: 100%;
-    grid-template-columns: 15% 85%;
+    grid-template-columns: ${props => (props.login) ? "15% 85%" : "100%"};
     grid-template-rows: auto;
-    grid-template-areas: 
-        "logo desktop_nav";
+    grid-template-areas: ${props => (props.login) ? '"logo desktop_nav"' : '"logo"'};
     grid-auto-flow: row;
     background-color: white;
+    justify-content: center;
+    align-content: center;
 
     @media only screen and (max-width: 600px) {
-        grid-template-columns: 85% 15%;
-        grid-template-rows: minmax(0, 1fr) minmax(0, auto);
-        grid-template-areas: 
-            "logo mobile_nav"
-            "desktop_nav desktop_nav";
-
+        grid-template-columns: ${
+            props => (props.login) 
+                ? "85% 15%" 
+                : "100%"
+            };
+        grid-template-rows: ${
+            props => (props.login) 
+                ? "minmax(0, 1fr) minmax(0, auto)" 
+                : "minmax(0, 1fr)"
+            };
+        grid-template-areas: ${
+            props => (props.login) 
+                ? '"logo mobile_nav" "desktop_nav desktop_nav"' 
+                : '"logo"'
+            };
     }
 `;
 
@@ -165,7 +221,14 @@ const LogoSection = styled.div`
     grid-area: logo;
     height: 80px;
     width: 100%;
-    background-color: white;
+    display: flex;
+    justify-content: ${props => (props.login) ? "flex-start" : "center"};
+    
+    div.logo {
+        width: 100px;
+        height: 100%;
+        background-color: red;
+    }
 `;
 
 const SearchSection = styled.div`
@@ -236,20 +299,22 @@ const DesktopNavSection = styled.div`
     }
 
     div.direct-wrapper {
-        width: auto;
+        width:  40px;
+        height: 40px;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 40px;
         border: 2px solid black;
         margin: 10px;
-        border-radius: 5px;
+        border-radius: 50%;
 
         @media only screen and (max-width: 600px) {
             margin: 0;
             width: 200px;
             margin-top: 5px;
             margin-right: 2px;
+            border-radius: 5px;
+            padding: 5px;
         }
 
         a {

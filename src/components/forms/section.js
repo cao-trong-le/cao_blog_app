@@ -20,6 +20,56 @@ const SectionFormComponent = (props) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const requiredList = ["section_title"]
 
+    const fullSize = () => {
+        const sectionContent = sectionFormRef.current.querySelector("div.section_content")
+        let style = sectionContent.style
+        style.position = "fixed"
+        style.top = "0px"
+        style.left = "0px"
+        style.width = "100%"
+        style.height = "100vh"
+        style.padding = "10px"
+        style.backgroundColor = "white"
+    }
+
+    const compressSize = () => {
+        const sectionContent = sectionFormRef.current.querySelector("div.section_content")
+        sectionContent.style.position = "initial"
+    }
+
+    const sectionFunctions = [
+        {
+            name: "font_size",
+            display: "Font Size",
+            icon: null, 
+            function: null
+        },
+        {
+            name: "font_family",
+            display: "Font Family",
+            icon: <i class="far fa-font"></i>, 
+            function: null
+        },
+        {
+            name: "font_color",
+            display: "Font Color",
+            icon: <i class="far fa-paint-brush"></i>, 
+            function: null
+        },
+        {
+            name: "full_screen",
+            display: "Full Screen",
+            icon: <i class="fas fa-expand"></i>, 
+            function: fullSize
+        },
+        {
+            name: "minimize_screen",
+            display: "Minimize Screen",
+            icon: <i class="fas fa-compress"></i>, 
+            function: compressSize
+        },
+    ]
+
     // useEffect(() => {
 
 
@@ -28,6 +78,20 @@ const SectionFormComponent = (props) => {
     // }, [])
 
     const sectionFormRef = useRef()
+
+    const renderSectionFunctions = () => {
+        return sectionFunctions.map((func, index) => {
+            return (
+                <div 
+                    className={func.name} 
+                    onClick={func.function}
+                    key={index}>
+                    {func.icon}
+                    <p>{func.display}</p>
+                </div>
+            )
+        })
+    }
 
     const accessFormValidation = () => {
         const formValidate = new FormValidation({ ...formValues })
@@ -119,14 +183,10 @@ const SectionFormComponent = (props) => {
         setFormValues({ ...formValues, section_public: !formValues.section_public })
     }
 
-    const handleChange = (e) => {
+    const handleChange = async (e) => {
         const { name, value } = e.target;
-        setFormValues({ ...formValues, [name]: value });
 
         // set errors
-
-        let errorMsg = {}
-
         const validator = new FormValidation({ ...formValues, [name]: value })
         let validStatus = null
 
@@ -134,38 +194,34 @@ const SectionFormComponent = (props) => {
             case "section_title":
                 const scanList = [
                     validator.isEmptyField(
-                        formValues.section_title,
+                        value,
                         "Section title cannot be emptied.",
                         "section_title"
                     ),
                     validator.isCertainLength(
                         1,
                         255,
-                        formValues.section_title,
+                        value,
                         "",
                         "Section title cannot exceed 255 characters.",
                         "section_title"
                     )
                 ]
 
-                console.log(scanList)
-
-                for (let scan in scanList) {
+                for (let scan of scanList) {
                     if (!scan.status) {
                         validStatus = scan
+                        break
                     }
+
+                    validStatus = scan
                 }
                 break
             default:
                 break
         }
 
-        console.log(validStatus)
-
-        if (!validStatus.status)
-            errorMsg[validStatus.type] = validStatus.message
-        // Object.assign(errorMsg, { [validStatus.type]: validStatus.message })
-
+        setFormValues({ ...formValues, [name]: value });
         setFormErrors({ ...formErrors, [validStatus.type]: validStatus.message })
     };
 
@@ -278,9 +334,9 @@ const SectionFormComponent = (props) => {
     return (
         <SectionFormWrapper ref={sectionFormRef} enctype="multipart/form-data">
             {console.log(formValues)}
-            {console.log(formValues.section_image.length)}
-            {/* {console.log(formErrors)} */}
-
+            {/* {console.log(formValues.section_image.length)} */}
+            {console.log(formErrors)}
+    
             <div className="form-title">
                 <h2>New Section</h2>
             </div>
@@ -302,10 +358,13 @@ const SectionFormComponent = (props) => {
                     {formErrors.section_title && <span className="error-msg">{formErrors.section_title}</span>}
                 </div>
 
-                <div className="form-field">
+                <div className="form-field section_content">
                     <legend className="section_content">
                         <p>Section Content</p>
                     </legend>
+                    <div className="section-function">
+                        {renderSectionFunctions()}
+                    </div>
                     <textarea
                         name="section_content"
                         id="section_content"
@@ -367,9 +426,10 @@ export { SectionFormComponent }
 const SectionFormWrapper = styled.form`
     display: flex;
     flex-direction: column;
-    padding: 15px;
+    /* padding: 15px; */
     width: 600px;
     margin-bottom: 50px;
+    /* position: relative; */
     font-family: Arial, Helvetica, sans-serif;
 
     @media only screen and (max-width: 768px) {

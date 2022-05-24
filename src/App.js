@@ -5,6 +5,9 @@ import styled from "styled-components";
 import { BrowserRouter as Router, Switch, Route, Redirect, matchPath } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 
+import * as userActions from "redux_actions/userActions";
+import { useSelector } from "react-redux";
+
 // import components
 import { 
   HomeComponent,
@@ -16,6 +19,8 @@ import {
 
 
 const App = (props) => {
+  const user = useSelector((state) => state.user)
+
   const router = () => {
     return (
       <AnimatePresence>
@@ -54,6 +59,7 @@ const AppComponent = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  position: relative;
 
   @media only screen and (max-width: 768px) {
       width: 100%;

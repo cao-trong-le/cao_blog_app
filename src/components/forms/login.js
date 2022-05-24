@@ -1,21 +1,32 @@
 /* eslint-disable no-unused-vars */
+/* eslint-disable */
 import React, { useState, useEffect, useRef } from "react";
-import { Link, matchPath } from "react-router-dom";
+import { Link, matchPath, useHistory } from "react-router-dom";
 import styled from "styled-components";
 // import axiosInstance from "axios_instance/axiosInstace";
 import { FormValidation } from "helpers/formValidation";
+import axiosInstance from "axios_instance/axios_instance";
+import jwtDecode from "jwt-decode";
+
+import { connect } from "react-redux";
+import * as userActions from "redux_actions/userActions";
+import { useDispatch, useSelector } from "react-redux";
 
 const LoginFormComponent = (props) => {
     // create later
 
-    const intialValues = { email: "", password: "" };
+    const intialValues = { username: "", password: "" };
     const [formValues, setFormValues] = useState(intialValues);
     const [formErrors, setFormErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const history = useHistory()
+    const dispatch = useDispatch()
+    const user = useSelector((state) => state.user)
 
     useEffect(() => {
-        setFormValues({ email: "", password: "" })
+        setFormValues({ username: "", password: "" })
         setFormErrors({})
+        console.log(user)
     }, [])
 
     const handleChange = (e) => {
@@ -47,14 +58,48 @@ const LoginFormComponent = (props) => {
 
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault()
+    const reorganizeData = () => {
+        let data = new FormData()
+        data.append("event", "login")
+        for (let [key, value] of Object.entries(formValues))
+            data.append(key, value)
+        return data
+    }
 
-        // axiosInstance
-        //     .post("api/token/", formValues)
-        //     .then((res) => {
-        //         console.log(res.data)
-        //     })
+    const getTokenPair = () => {
+        const data = reorganizeData()
+
+        axiosInstance
+            .post("api/token/", data)
+            .then((res) => {
+                console.log(res.data)
+                localStorage.setItem('access_token', res.data.access);
+				localStorage.setItem('refresh_token', res.data.refresh);
+				axiosInstance.defaults.headers['Authorization'] =
+					'JWT ' + localStorage.getItem('access_token');
+                getUserInfo()
+            })
+    }
+
+    const getUserInfo = () => {
+        const payload = jwtDecode(localStorage.getItem('access_token'))
+        let jsonData = payload
+        jsonData["event"] = "login"
+        let data = jsonData
+
+        axiosInstance
+            .post("user/login/", data)
+            .then( async (res) => {
+                console.log(res.data)
+                await dispatch(userActions.loginUser())
+                await dispatch(userActions.updateUserInfo(res.data.data))
+                history.push("/")
+            })
+    }
+ 
+    const handleSubmit = async (e) => {
+        e.preventDefault()
+        getTokenPair()
     }
 
     return (
@@ -69,15 +114,16 @@ const LoginFormComponent = (props) => {
                     <legend className="email">
                         <p>Email</p>
                     </legend>
+
                     <input
-                        type="email"
-                        name="email"
-                        id="email"
-                        value={formValues.email}
+                        type="text"
+                        name="username"
+                        id="username"
+                        value={formValues.username}
                         autoComplete="off"
                         onChange={handleChange}
                     />
-                    {formErrors.email && <span>{formErrors.email}</span>}
+                    {formErrors.username && <span>{formErrors.username}</span>}
                 </div>
 
                 <div className="form-field">
@@ -107,7 +153,17 @@ const LoginFormComponent = (props) => {
     )
 }
 
-export { LoginFormComponent }
+const mapStateToProps = state => ({
+    ...state
+});
+
+const mapDispatchToProps = () => ({
+    loginUser: userActions.loginUser,
+    logoutUser: userActions.logoutUser,
+    updateUserInfo: userActions.updateUserInfo
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(LoginFormComponent)
 
 const LoginFormWrapper = styled.form`
     display: flex;
@@ -144,7 +200,7 @@ const LoginFormWrapper = styled.form`
     input[type="email"],
     input[type="password"],
     input[type="text"] {
-        height: 45px;
+        height: 35px;
         width: 100%;
         background-color: white;
         border: 1px solid black;
@@ -157,10 +213,6 @@ const LoginFormWrapper = styled.form`
         /* @media only screen and (max-width: 600px) {
             width: 90%;
         } */
-    }
-
-    input[type="text"] {
-        height: 35px;
     }
 
     textarea {

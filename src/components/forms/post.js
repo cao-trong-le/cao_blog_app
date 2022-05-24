@@ -2,10 +2,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, matchPath } from "react-router-dom";
 import styled from "styled-components";
+import axios from "axios";
 // import axiosInstance from "axios_instance/axiosInstace";
 import { FormValidation } from "helpers/formValidation";
 import Compress from "compress.js";
 import { SectionFormComponent } from "./section";
+import { useSelector } from "react-redux";
 
 const PostFormComponent = (props) => {
     // create later
@@ -15,12 +17,16 @@ const PostFormComponent = (props) => {
         post_summary: "",
         post_image: [],
         post_public: true,
-        post_view: 0
+        post_edited: false,
+        post_view: 0,
+        post_section: []
     }
     const [formValues, setFormValues] = useState(intialValues);
     const [formErrors, setFormErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const requiredList = ["post_title"]
+
+    const user = useSelector((state) => state.user)
 
     // useEffect(() => {
 
@@ -95,15 +101,13 @@ const PostFormComponent = (props) => {
 
         // get initial data
         let data = []
-        for (let file of formValues.post_image) 
-            data.push(file)
+        // for (let file of formValues.post_image) 
+        //     data.push(file)
 
         // add files from resized list
-        for (let file of resizedList) {
-            console.log(file)
+        for (let file of resizedList) 
             data.push(file)
-        }
-            
+      
         setFormValues({ 
             ...formValues, 
             post_image: data })
@@ -216,7 +220,7 @@ const PostFormComponent = (props) => {
                         await handleUploadedImage(e)
                     }}
                     accept="image/*" 
-                    multiple={true} />
+                    multiple={false} />
 
                 <div className="preview-section-wrapper">
                     <div className="preview-section">
@@ -235,9 +239,20 @@ const PostFormComponent = (props) => {
 
     const reorganizeData = () => {
         let data = new FormData()
-        data.append("request_event", "register_user")
-        for (let [key, value] of Object.entries(formValues))
-            data.append(key, value)
+        // filter data
+
+        data.append("event", "add_post")
+        data.append("id", user.info.id)
+ 
+        for (let [key, value] of Object.entries(formValues)) {
+            if (key === "post_image" && value.length > 0) {
+                for (let image of value) 
+                    data.append(key, image, image.name)
+            }
+            else
+                data.append(key, value)
+        }
+
         return data
     }
 
@@ -246,11 +261,11 @@ const PostFormComponent = (props) => {
 
         const data = reorganizeData()
 
-        // axiosInstance
-        //     .post("/user/register/", data)
-        //     .then((res) => {
-        //         console.log(res.data)
-        //     })
+        axios
+            .post("http://127.0.0.1:8000/blog/create/post/", data)
+            .then((res) => {
+                console.log(res.data)
+            })
     }
 
     return (
@@ -352,13 +367,13 @@ export { PostFormComponent }
 const PostFormWrapper = styled.form`
     display: flex;
     flex-direction: column;
-    padding: 15px;
     width: 600px;
     margin-bottom: 50px;
     font-family: Arial, Helvetica, sans-serif;
 
-    @media only screen and (max-width: 768px) {
+    @media only screen and (max-width: 600px) {
         width: 100%;
+        padding: 15px;
     }
 
     textarea, 

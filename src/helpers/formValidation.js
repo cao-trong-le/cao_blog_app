@@ -77,6 +77,7 @@ class FormValidation {
     }
 
     isEmptyField = (value, message, error_type) => {
+        console.log(value)
         this.setValidationType(error_type)
         if (value.toString().length === 0) {
             this.returnValue.status = false
