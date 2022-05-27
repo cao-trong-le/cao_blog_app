@@ -5,9 +5,20 @@ import styled from "styled-components";
 // import axiosInstance from "axios_instance/axiosInstace";
 import { FormValidation } from "helpers/formValidation";
 import Compress from "compress.js";
+import ReactDOM from "react-dom/client";
+import Parser from "html-react-parser";
+
+import { TextEditorComponent } from "./textEditor";
 
 const SectionFormComponent = (props) => {
     // create later
+
+    const [hiddenTextBox, setHiddenTextBox] = useState("");
+    const [selectedText, setSelectedText] = useState("");
+    const sectionFormRef = useRef()
+    const hiddenTextBoxRef = useRef()
+    const sectionContentRef = useRef()
+    const pSectionContentRef = useRef()
 
     const intialValues = {
         section_title: "",
@@ -20,78 +31,6 @@ const SectionFormComponent = (props) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const requiredList = ["section_title"]
 
-    const fullSize = () => {
-        const sectionContent = sectionFormRef.current.querySelector("div.section_content")
-        let style = sectionContent.style
-        style.position = "fixed"
-        style.top = "0px"
-        style.left = "0px"
-        style.width = "100%"
-        style.height = "100vh"
-        style.padding = "10px"
-        style.backgroundColor = "white"
-    }
-
-    const compressSize = () => {
-        const sectionContent = sectionFormRef.current.querySelector("div.section_content")
-        sectionContent.style.position = "initial"
-    }
-
-    const sectionFunctions = [
-        {
-            name: "font_size",
-            display: "Font Size",
-            icon: null, 
-            function: null
-        },
-        {
-            name: "font_family",
-            display: "Font Family",
-            icon: <i class="far fa-font"></i>, 
-            function: null
-        },
-        {
-            name: "font_color",
-            display: "Font Color",
-            icon: <i class="far fa-paint-brush"></i>, 
-            function: null
-        },
-        {
-            name: "full_screen",
-            display: "Full Screen",
-            icon: <i class="fas fa-expand"></i>, 
-            function: fullSize
-        },
-        {
-            name: "minimize_screen",
-            display: "Minimize Screen",
-            icon: <i class="fas fa-compress"></i>, 
-            function: compressSize
-        },
-    ]
-
-    // useEffect(() => {
-
-
-    //     setFormValues(intialValues)
-    //     // setFormErrors({})
-    // }, [])
-
-    const sectionFormRef = useRef()
-
-    const renderSectionFunctions = () => {
-        return sectionFunctions.map((func, index) => {
-            return (
-                <div 
-                    className={func.name} 
-                    onClick={func.function}
-                    key={index}>
-                    {func.icon}
-                    <p>{func.display}</p>
-                </div>
-            )
-        })
-    }
 
     const accessFormValidation = () => {
         const formValidate = new FormValidation({ ...formValues })
@@ -333,9 +272,10 @@ const SectionFormComponent = (props) => {
 
     return (
         <SectionFormWrapper ref={sectionFormRef} enctype="multipart/form-data">
-            {console.log(formValues)}
+            {console.log(selectedText)}
             {/* {console.log(formValues.section_image.length)} */}
-            {console.log(formErrors)}
+            {/* {console.log(formErrors)} */}
+            {console.log(formValues.section_content)}
     
             <div className="form-title">
                 <h2>New Section</h2>
@@ -362,17 +302,12 @@ const SectionFormComponent = (props) => {
                     <legend className="section_content">
                         <p>Section Content</p>
                     </legend>
-                    <div className="section-function">
-                        {renderSectionFunctions()}
+
+                    <div>{Parser(formValues.section_content)}</div>
+
+                    <div className="text-editor-wrapper">
+                        <TextEditorComponent formValues={formValues} setFormValues={setFormValues} />
                     </div>
-                    <textarea
-                        name="section_content"
-                        id="section_content"
-                        onChange={handleChange}
-                        rows={20}
-                        maxLength={500}
-                        value={formValues.section_content} />
-                    {formErrors.section_content && <span className="error-msg">{formErrors.section_content}</span>}
                 </div>
 
                 <div
@@ -398,17 +333,6 @@ const SectionFormComponent = (props) => {
                 </div>
 
                 {renderImage(formValues.section_image)}
-
-
-                {/* <div className="form-field">
-                    <label htmlFor="base_price">Section Image</label>
-                    {accessFormHelper().renderImage(
-                        "section_image",
-                        handleUploadedImage,
-                        removeUploadedImage,
-                        formValues.section_image)}
-                    {formErrors.section_image && <span>{formErrors.section_image}</span>}
-                </div> */}
 
                 <div 
                     className="submit-wrapper">

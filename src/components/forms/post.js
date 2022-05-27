@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+/* eslint-disable */
+import React, { useState, useEffect, useRef, createElement, useMemo, memo } from "react";
 import { Link, matchPath } from "react-router-dom";
 import styled from "styled-components";
 import axios from "axios";
@@ -36,6 +37,7 @@ const PostFormComponent = (props) => {
     // }, [])
 
     const postFormRef = useRef()
+    
 
     const accessFormValidation = () => {
         const formValidate = new FormValidation({ ...formValues })
@@ -237,6 +239,15 @@ const PostFormComponent = (props) => {
         )
     }
 
+    // to avoid rendering image component again
+    const memorizeRenderImage = useMemo(() => renderImage(formValues.post_image), [formValues.post_image])
+
+    // text functions
+    const HTMLContentRef = useRef()
+    const testElementRef = useRef()
+
+    
+
     const reorganizeData = () => {
         let data = new FormData()
         // filter data
@@ -338,7 +349,7 @@ const PostFormComponent = (props) => {
                     <SectionFormComponent />
                 </div>
 
-                {renderImage(formValues.post_image)}
+                {memorizeRenderImage}
 
 
                 {/* <div className="form-field">
@@ -351,8 +362,7 @@ const PostFormComponent = (props) => {
                     {formErrors.post_image && <span>{formErrors.post_image}</span>}
                 </div> */}
 
-                <div 
-                    className="submit-wrapper">
+                <div className="submit-wrapper">
                     <button
                         onClick={handleSubmit}
                         type="submit">Submit</button>
