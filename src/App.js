@@ -15,6 +15,7 @@ import {
   PostFormComponent,
   LoginFormComponent,
   RegisterFormComponent,
+  CreatePostComponent
 } from "./components";
 
 
@@ -34,7 +35,7 @@ const App = (props) => {
             }}
           />
           <Route exact path="/home/posts/" component={HomeComponent} />
-          <Route exact path="/new/post/" component={PostFormComponent} />
+          <Route exact path="/new/post/" component={CreatePostComponent} />
           <Route exact path="/register/" component={RegisterFormComponent} />
           <Route exact path="/login/" component={LoginFormComponent} />
         </Switch>

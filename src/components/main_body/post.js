@@ -1,50 +1,70 @@
-/* eslint-disable no-unused-vars */
+/* eslint-disable */
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
+import { useSelector, useDispatch } from "react-redux";
+import * as actions from "redux_actions/appActions";
 
 
 const PostComponent = (props) => {
     // create later
 
-    const dateObj = new Date();
+    useEffect(() => {
+        // console.log(props)
+    }, [])
+
+    const dateObj = new Date(props.post_date);
+
+    const dispatch = useDispatch()
+    const app = useSelector((state) => state.app)
 
     return (
         <PostComponentWrapper>
-            <div className="post-header">
-                <p className="post-title">Django Setup</p>
-                <p className="post-date">{dateObj.toLocaleDateString().toString()}</p>
-                <div className="post-public">
+            <div className="select-box" hidden={app.selecting ? false : true}>
+                <i 
+                    class={(() => {
+                        let selected_posts = [...app.post_selected]
+                        let post_code = props.post_code
+                        let idx = selected_posts.findIndex((post) => post === post_code)
 
-                </div>
+                        if (idx === -1) {
+                            return "fa fa-square-o"
+                        } else {
+                            return "fa fa-check-square-o"
+                        }
+                        
+                    })()} 
+                    onClick={(() => {
+                        dispatch(actions.appendToSelectedList([props.post_code]))
+                    })}
+                    aria-hidden="true"></i>
             </div>
+
+            <div className="post-image">
+
+            </div>
+
+            <div className="post-header">
+                <p className="post-title">{props.post_title}</p>
+                <p className="post-date">{dateObj.toLocaleDateString().toString()}</p>
+                <div className="post-public"></div>
+            </div>
+
             <div className="post-content">
                 <div className="post-content-fucntions">
                     <div className="add-section-btn"></div>
                 </div>
+
                 <div className="content-wrapper">
                     <p className="content">
-                        Lorem Ipsum refers to a dummy block of text that is often used in publishing and graphic design to fill gaps in the page before the actual words are put into the finished product. Lorem ipsum resembles Latin but has no real meaning.
-
-                        Insert Dummy Text in Microsoft Word
-                        If you are working inside Microsoft Word and need some filler text to test the layout of fonts and other design elements of your document, there’s no need to hunt for an online generator as you can create “Lorem Ipsum” inside Word itself. Here’s how:
-
-                        Just start a new paragraph in Word, type \=lorem() and hit Enter.
-
-                        lorem ipsum in word
-
-                        This will fill three paragraphs of Lorem Ipsum characters in the document but if you also control the amount of text that is generated through the above function as shown below:
-
-                        \=lorem(Number of Paragraphs, Number of Lines)
-
-                        For instance, =lorem(2,5) will create 2 paragraphs of Lorem Ipsum text and it will span across 5 lines (or sentences). The parameters are optional. If you omit the parameters the default number of paragraphs is three, and the default number of lines per paragraph is also three.
-
-
-
-                        The lorem() function is available in Word 2007 but if you are using a previous version of Office, you may use the good old rand() function to insert any amount of random text in your Word Document.
-
-                        If the lorem() generator is not working on your copy of Word, you probably have turned off the “Replace text as you type” option available under AutoCorrect.
+                        {props.post_summary}
                     </p>
                 </div>
+            </div>
+
+            <div className="post-functions">
+                <input type="button" value="Edit" />
+                <input type="button" value="Delete" />
+                <input type="button" value="View" />
             </div>
         </PostComponentWrapper>
     )
@@ -52,10 +72,70 @@ const PostComponent = (props) => {
 
 
 const PostComponentWrapper = styled.div`
-    height: auto;
-    width: 100%;
+    display: grid;
+    height: 150px;
+    width: 99%;
     border: 1px solid black;
+    margin-top: 10px;
+    position: relative;
+    grid-template-columns: 30% 70%;
+    grid-template-rows: 20% 60% 20%;
+    grid-template-areas: 
+        "post_image post_header"
+        "post_image post_content"
+        "post_image post_functions";
+
+    div.post-image {
+        grid-area: post_image;
+        height: 99%;
+        width: 99%;
+        background-color: blanchedalmond;
+    }
+
+    div.post-header {
+        grid-area: post_header;
+        height: 100%;
+        width: 100%;
+        background-color: burlywood;
+        display: flex;
+        flex-direction: row;
+    }
+
+    div.post-content {
+        grid-area: post_content;
+        height: 100%;
+        width: 100%;
+        background-color: bisque;
+        display: flex;
+        flex-direction: row;
+    }
+
+    div.post-functions {
+        grid-area: post_functions;
+        height: 100%;
+        width: 100%;
+        background-color: chartreuse;
+        display: flex;
+        flex-direction: row;
+        justify-content: right;
+        align-items: center;
+        padding: 1px;
+
+        input[type="button"] {
+            height: 85%;
+            width: 60px;
+            margin-left: 5px;
+            border: none;
+            outline: none;
+        }
+    }
+
+    div.select-box {
+        position: absolute;
+        top: 0px;
+    }
 `;
+
 
 
 

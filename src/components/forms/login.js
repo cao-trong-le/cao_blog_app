@@ -26,7 +26,6 @@ const LoginFormComponent = (props) => {
     useEffect(() => {
         setFormValues({ username: "", password: "" })
         setFormErrors({})
-        console.log(user)
     }, [])
 
     const handleChange = (e) => {
@@ -90,7 +89,6 @@ const LoginFormComponent = (props) => {
         axiosInstance
             .post("user/login/", data)
             .then( async (res) => {
-                console.log(res.data)
                 await dispatch(userActions.loginUser())
                 await dispatch(userActions.updateUserInfo(res.data.data))
                 history.push("/")

@@ -101,23 +101,6 @@ class ValidationHelpers {
         })
     }
 
-    // handleChangeTest = (e, nested = false, mainKey = null) => {
-    //     const { name, value } = e.target;
-    //     if (nested) {
-    //         const keyValue = { ...this.updatedData[mainKey], [name]: value }
-    //         this.setFormValues({ ...this.updatedData, [mainKey]: keyValue })
-    //     } else {
-    //         this.setFormValues({ ...this.updatedData, [name]: value })
-    //         this.handleSingleValidation({ ...this.updatedData, [name]: value }, name, value)
-    //     }
-    // };
-
-    // requireFields = []
-
-    // verifyForm = (requiredFields) => {
-
-    // }
-
     handleChange = (e) => {
         const { name, value } = e.target;
         this.setFormValues({ ...this.updatedData, [name]: value });
@@ -145,8 +128,6 @@ class ValidationHelpers {
 
 
     scanValidateTargets = (validator) => {
-        console.log("comming through")
-        console.log(this.validateTargets)
         let status = true
         for (let [key, value] of Object.entries(this.updatedData)) {
             console.log(key, value)
@@ -178,8 +159,6 @@ class ValidationHelpers {
         fieldValue = null,
         nested = false,
         m_key = null) => {
-
-        console.log(fieldName, fieldValue, m_key)
 
         const validator = new FormValidation({ ...this.updatedData })
 

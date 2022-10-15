@@ -8,7 +8,18 @@ import axios from "axios";
 import { FormValidation } from "helpers/formValidation";
 import Compress from "compress.js";
 import { SectionFormComponent } from "./section";
-import { useSelector } from "react-redux";
+import axiosInstance from "axios_instance/axios_instance";
+
+import { useSelector, useDispatch } from "react-redux";
+import * as form_actions from "redux_actions/formActions";
+import * as app_actions from "redux_actions/appActions";
+
+const actions = {
+    ...form_actions,
+    ...app_actions
+}
+
+import * as fileHelpers from "helpers/fileHelpers";
 
 const PostFormComponent = (props) => {
     // create later
@@ -22,118 +33,42 @@ const PostFormComponent = (props) => {
         post_view: 0,
         post_section: []
     }
-    const [formValues, setFormValues] = useState(intialValues);
+    
+    const [formValues, setFormValues] = useState(intialValues)
+    const [formFiles, setFormFiles] = useState([]);
     const [formErrors, setFormErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [addSection, setAddSection] = useState(false)
     const requiredList = ["post_title"]
 
+    const dispatch = useDispatch()
+
     const user = useSelector((state) => state.user)
+    const post = useSelector((state) => state.form.post)
+    const app = useSelector((state) => state.app)
 
-    // useEffect(() => {
+    useEffect(() => {
+        // dispatch(actions.handlePost({...formValues}))
 
+        // if (!app.post_on_progress) {
+        //     dispatch(actions.setPostOnProgress(true))
+        // }
 
-    //     setFormValues(intialValues)
-    //     // setFormErrors({})
-    // }, [])
+        // console.log(props.postImages)
+
+    }, [formValues])
 
     const postFormRef = useRef()
     
-
     const accessFormValidation = () => {
-        const formValidate = new FormValidation({ ...formValues })
+        const formValidate = new FormValidation({ ...post })
         return formValidate
     }
 
-    const handleUploadedImage = async (e) => {
-        const files = Array.from(e.target.files)
-       
-        // clear input value
-        const postInputField = postFormRef.current.querySelector("input[name='post_image']")
-        postInputField.value = ""
-
-        let resizedList = []
-        let isValidSize = null
-
-        for (let file of files) {
-            console.log(file)
-            isValidSize = await accessFormValidation().isValidImage(
-                file.size, 
-                "The uploaded image cannot be bigger than 5mb."
-            )
-
-            if (!isValidSize.status) break;
-        }
-        
-
-        if (isValidSize.status) {
-            console.log("pass")
-            // compress the uploaded image
-            // Initialization
-            const compress = new Compress()
-
-            // Attach listener
-            await compress.compress(files, {
-                size: 4,
-                quality: .75,
-                maxWidth: 300,
-                maxHeight: 300,
-                resize: true,
-                rotate: false,
-
-            }).then( async (data) => {
-                const imgs = data
-                for (let img of imgs) {
-                    const base64str = img.data
-                    const imgExt = img.ext
-                    // convert image into blob type
-                    const blob = Compress.convertBase64ToFile(base64str, imgExt)
-    
-                    // convert blob => a file
-                    const file = new File([blob], img.alt, {
-                        type: imgExt,
-                        lastModified: new Date().getTime()
-                    })
-    
-                    resizedList.push(file)
-                }
-            })
-        } else {
-            setFormErrors({ ...formErrors, [isValidSize.type]: isValidSize.message })
-        }
-
-        // get initial data
-        let data = []
-        // for (let file of formValues.post_image) 
-        //     data.push(file)
-
-        // add files from resized list
-        for (let file of resizedList) 
-            data.push(file)
-      
-        setFormValues({ 
-            ...formValues, 
-            post_image: data })
-    }
-
-    const removeUploadedImage = (e) => {
-        const postInputField = postFormRef.current.querySelector("input[name='post_image']")
-        postInputField.value = ""
-        setFormValues({...formValues, post_image: []})
-    }
-
-    const handleTick = (e) => {
-        setFormValues({ ...formValues, post_public: !formValues.post_public })
-    }
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormValues({ ...formValues, [name]: value });
-
-        // set errors
-
+    const handleFormError = (name, data) => {
         let errorMsg = {}
 
-        const validator = new FormValidation({ ...formValues, [name]: value })
+        const validator = new FormValidation({ ...data })
         let validStatus = null
 
         switch (name) {
@@ -144,146 +79,75 @@ const PostFormComponent = (props) => {
                 break
         }
 
-        console.log(validStatus)
-
-        if (!validStatus.status)
-            errorMsg[validStatus.type] = validStatus.message
-        // Object.assign(errorMsg, { [validStatus.type]: validStatus.message })
-
-        setFormErrors({ ...formErrors, [validStatus.type]: validStatus.message })
-    };
-
-    const renderImagesList = (list) => {
-        console.log(list)
-
-        if (list.length > 0) {
-            return list.map((item, index) => {
-                return (
-                    <div className="image-wrapper" key={index}>
-                        <div className="image-hover">
-                            <i 
-                                id={index}
-                                className="far fa-trash-alt" 
-                                onClick={((e) => {
-                                    const idx = e.target.id
-                                    let copied = [...formValues.post_image]
-                                    copied.splice(idx, 1)
-                                    setFormValues({...formValues, post_image: [...copied]})
-
-                                    // const postInputField = postFormRef.current.querySelector("input[name='post_image']")
-                                    // postInputField.value = ""
-                                })}/>
-                        </div>
-                        <div 
-                            style={{backgroundImage: `url("${(() =>  URL.createObjectURL(item))()}")`}}
-                            className="image-content">
-
-                            <img 
-                                key={index}
-                                alt="post_image"
-                                src={(() =>  URL.createObjectURL(item))()} />
-                        </div>
-                    </div>
-                )
-            })
+        if (validStatus !== null) {
+            if (!validStatus.status)
+                errorMsg[validStatus.type] = validStatus.message
+            setFormErrors({ ...formErrors, [validStatus.type]: validStatus.message })
         }
     }
 
-    const renderImage = (list) => {
-        return (
-            <div className="form-field">
-                <legend className="post_summary">
-                    <p>Post Images</p>
-                </legend>
+    const handleTick = (e) => {
+        // dispatch(handlePost({ ...post, post_public: !post.post_public }))
+        setFormValues({ ...formValues, post_public: !formValues.post_public })
+    }
 
-                <div className="control-buttons-wrapper">
-                    <input 
-                        type="button" 
-                        className="choose-btn"
-                        value="Choose Images"
-                        onClick={(() => {
-                            const chooseImageBtn = postFormRef.current.querySelector("input[name='post_image']")
-                            chooseImageBtn.click()
-                        })}/>
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        const data = {...formValues, [name]: value}
+        setFormValues({...data})
 
-                    {formValues.post_image.length > 0  && <input
-                        type="button"
-                        className="clear-btn"
-                        value="Clear"
-                        onClick={(e) => { removeUploadedImage(e) }} />}
-                </div>
-                
-                <input
-                    hidden={true}
-                    type="file"
-                    name="post_image"
-                    id="post_image"
-                    onChange={ async (e) => {
-                        await handleUploadedImage(e)
-                    }}
-                    accept="image/*" 
-                    multiple={false} />
-
-                <div className="preview-section-wrapper">
-                    <div className="preview-section">
-                        {renderImagesList(list)}
-                    </div>
-                </div>
-
-                {formErrors.post_image && 
-                    <span 
-                        className="error-msg">
-                        {formErrors.post_image}
-                    </span>}
-            </div>
-        )
+        // set errors
+        handleFormError(name, data)
     }
 
     // to avoid rendering image component again
-    const memorizeRenderImage = useMemo(() => renderImage(formValues.post_image), [formValues.post_image])
+    const memorizeRenderImage = useMemo(() => {
+        return fileHelpers.renderImage(
+            false,
+            postFormRef,
+            formErrors,
+            setFormErrors,
+            formFiles,
+            setFormFiles,
+            accessFormValidation,
+            "post"
+        )
+    }, [formFiles])
 
-    // text functions
-    const HTMLContentRef = useRef()
-    const testElementRef = useRef()
-
-    
-
-    const reorganizeData = () => {
-        let data = new FormData()
-        // filter data
-
-        data.append("event", "add_post")
-        data.append("id", user.info.id)
- 
-        for (let [key, value] of Object.entries(formValues)) {
-            if (key === "post_image" && value.length > 0) {
-                for (let image of value) 
-                    data.append(key, image, image.name)
-            }
-            else
-                data.append(key, value)
-        }
-
-        return data
-    }
-
-    const handleSubmit = (e) => {
+    const handlePostSave = (e) => {
         e.preventDefault()
 
-        const data = reorganizeData()
+        // setFormValues({...formValues, post_image: formFiles})
 
-        axios
-            .post("http://127.0.0.1:8000/blog/create/post/", data)
-            .then((res) => {
-                console.log(res.data)
-            })
+        // validate input values
+        // console.log(formErrors)
+        for (var require of requiredList) {
+            handleFormError(require, {...formValues})
+
+            if (formErrors[require] !== "") 
+                return     
+        }
+
+        dispatch(actions.handlePost(formValues))
+        dispatch(actions.setPostOnProgress(false))
+
+        // add all images to redux store
+        // converse images to base64
+        var base_64_images_list = []
+
+        for (var image of formFiles) {
+            var base_64_img = URL.createObjectURL(image)
+            base_64_images_list.push(base_64_img)
+        }
+
+        dispatch(actions.handleFormImages("post", [...base_64_images_list]))
     }
 
     return (
         <PostFormWrapper ref={postFormRef} enctype="multipart/form-data">
-            {console.log(formValues)}
-            {console.log(formValues.post_image.length)}
-            {/* {console.log(formErrors)} */}
+            {/* {console.log(post)} */}
+
+            {/* {console.log(formValues)} */}
 
             <div className="form-title">
                 <h1>New Post</h1>
@@ -315,7 +179,7 @@ const PostFormComponent = (props) => {
                         id="post_summary"
                         onChange={handleChange}
                         rows={20}
-                        maxLength={500}
+                        maxLength={200}
                         value={formValues.post_summary} />
                     {formErrors.post_summary && <span className="error-msg">{formErrors.post_summary}</span>}
                 </div>
@@ -342,30 +206,12 @@ const PostFormComponent = (props) => {
                         className={formValues.post_public ? "far fa-check-square" : "far fa-square"}></i>
                 </div>
 
-                <div className="section-preview">
-                    <div className="created-section-preview">
-                        <p>No Section Created</p>
-                    </div>
-                    <SectionFormComponent />
-                </div>
-
                 {memorizeRenderImage}
 
-
-                {/* <div className="form-field">
-                    <label htmlFor="base_price">Post Image</label>
-                    {accessFormHelper().renderImage(
-                        "post_image",
-                        handleUploadedImage,
-                        removeUploadedImage,
-                        formValues.post_image)}
-                    {formErrors.post_image && <span>{formErrors.post_image}</span>}
-                </div> */}
-
-                <div className="submit-wrapper">
+                <div className="save-btn-wrapper">
                     <button
-                        onClick={handleSubmit}
-                        type="submit">Submit</button>
+                        onClick={handlePostSave}
+                        type="submit">Save</button>
                 </div>
             </div>
         </PostFormWrapper>
@@ -389,23 +235,15 @@ const PostFormWrapper = styled.form`
     textarea, 
     input[type="text"] {
         width: 100%;
-        background-color: aliceblue;
-        border: none;
         border-radius: 5px;
         outline: none;
         font-size: 12pt;
         padding: 5px;
-        -webkit-box-shadow: -1px 2px 11px 2px rgba(0,0,0,0.5); 
-        box-shadow: -1px 2px 9px 2px rgba(0,0,0,0.5);
         margin-bottom: 15px;
     }
 
     input[type="text"] {
         height: 35px;
-    }
-
-    textarea {
-        background-color: aliceblue;
     }
 
     span.error-msg {

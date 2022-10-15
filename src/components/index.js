@@ -1,4 +1,7 @@
 import { HomeComponent } from "./main_body"
+import { CreatePostComponent } from "./main_body"
+
+
 import { HeaderComponent } from "./header"
 
 
@@ -9,6 +12,8 @@ import { SectionFormComponent } from "./forms"
 
 export {
     HomeComponent,
+    CreatePostComponent,
+
     HeaderComponent,
 
     PostFormComponent,

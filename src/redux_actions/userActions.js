@@ -21,3 +21,4 @@ export const logoutUser = () => dispatch => {
         payload: false
     })
 }
+

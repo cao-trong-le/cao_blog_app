@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components"
 import { useWindowDimensions } from "hooks";
+import { useHistory } from "react-router-dom";
 
 import * as userActions from "redux_actions/userActions";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,13 +13,16 @@ const HeaderComponent = (props) => {
     const [burger, setBurger] = useState(false)
     const { width } = useWindowDimensions()
     const [directionsList, setDirectionsList] = useState([])
-    const [searchKey, setSearchKey] = useState("")
-
+    
     const dispatch = useDispatch()
     const user = useSelector((state) => state.user)
 
+    const history = useHistory()
+
     useEffect(() => {
-        console.log(user)
+        if (!user.login) {
+            history.push("/login/")
+        }
     }, [])
 
     let directions = [
@@ -126,16 +130,6 @@ const HeaderComponent = (props) => {
     const renderDesktopNav = () => {
         return (
             <DesktopNavSection>
-                <SearchSection>
-                    {user.login && <div className="search-bar-wrapper">
-                        <input 
-                            type="text" 
-                            value={searchKey}
-                            onChange={((e) => {setSearchKey(e.target.value)})}
-                            placeholder="Search..." />
-                        <i className="fa fa-search" />
-                    </div>}
-                </SearchSection>
                 {renderListItemsInMenu()}
             </DesktopNavSection>
         )
@@ -228,59 +222,6 @@ const LogoSection = styled.div`
         width: 100px;
         height: 100%;
         background-color: red;
-    }
-`;
-
-const SearchSection = styled.div`
-    grid-area: search;
-    height: auto;
-    width: 350px;
-    background-color: white;
-    display: flex;
-    justify-content: right;
-    align-items: center;
-    margin-right: 2px;
-
-    @media only screen and (max-width: 768px) {
-        width: 200px;
-    }
-
-    @media only screen and (max-width: 600px) {
-        margin-top: 5px;
-        width: 100%;
-    }
-
-    div.search-bar-wrapper {
-        width: 99%;
-        height: 40px;
-        border: 2px solid black;
-        display: flex;
-        border-radius: 5px;
-
-        input {
-            width: 350px;
-            border: none;
-            outline: none;
-            padding-left: 10px;
-            font-size: 12pt;
-
-            @media only screen and (max-width: 768px) {
-                width: 80%;
-            }
-
-            @media only screen and (max-width: 600px) {
-                width: 100%;
-            }
-        }
-
-        i {
-            height: 35px;
-            width: 35px;
-            /* max-width: 25%; */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
     }
 `;
 

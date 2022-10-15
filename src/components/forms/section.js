@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+/* eslint-disable */
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Link, matchPath } from "react-router-dom";
 import styled from "styled-components";
 // import axiosInstance from "axios_instance/axiosInstace";
@@ -8,129 +9,71 @@ import Compress from "compress.js";
 import ReactDOM from "react-dom/client";
 import Parser from "html-react-parser";
 
+import { useSelector, useDispatch } from "react-redux";
+import * as form_actions from "redux_actions/formActions";
+import * as app_actions from "redux_actions/appActions";
+
+const actions = {
+    ...form_actions,
+    ...app_actions
+}
+
 import { TextEditorComponent } from "./textEditor";
+
+import * as fileHelpers from "helpers/fileHelpers";
 
 const SectionFormComponent = (props) => {
     // create later
-
-    const [hiddenTextBox, setHiddenTextBox] = useState("");
-    const [selectedText, setSelectedText] = useState("");
     const sectionFormRef = useRef()
-    const hiddenTextBoxRef = useRef()
-    const sectionContentRef = useRef()
-    const pSectionContentRef = useRef()
 
     const intialValues = {
+        section_id: 0,
         section_title: "",
         section_content: "",
         section_image: [],
         section_public: true,
     }
+
+    const [formFiles, setFormFiles] = useState([]);
     const [formValues, setFormValues] = useState(intialValues);
+    const [formSectionTitle, setFormSectionTitle] = useState("")
+    const [formSectionContent, setFormSectionContent] = useState("")
     const [formErrors, setFormErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [onProgess, setOnProgress] = useState(false)
+    const [isSaved, setIsSaved] = useState(false);
+
     const requiredList = ["section_title"]
 
+    useEffect(() => {
+        // get the id of the last element in progress sections list
+        dispatch(actions.handleSection({
+            ...formValues, 
+            section_content: formSectionContent
+        }))
+    }, [formValues, formSectionContent])
+
+    const dispatch = useDispatch()
+    const form = useSelector((state) => state.form)
+    const app = useSelector((state) => state.app)
 
     const accessFormValidation = () => {
         const formValidate = new FormValidation({ ...formValues })
         return formValidate
     }
 
-    const handleUploadedImage = async (e) => {
-        const files = Array.from(e.target.files)
-       
-        // clear input value
-        const sectionInputField = sectionFormRef.current.querySelector("input[name='section_image']")
-        sectionInputField.value = ""
-
-        let resizedList = []
-        let isValidSize = null
-
-        for (let file of files) {
-            console.log(file)
-            isValidSize = await accessFormValidation().isValidImage(
-                file.size, 
-                "The uploaded image cannot be bigger than 5mb."
-            )
-
-            if (!isValidSize.status) break;
-        }
-        
-
-        if (isValidSize.status) {
-            console.log("pass")
-            // compress the uploaded image
-            // Initialization
-            const compress = new Compress()
-
-            // Attach listener
-            await compress.compress(files, {
-                size: 4,
-                quality: .75,
-                maxWidth: 300,
-                maxHeight: 300,
-                resize: true,
-                rotate: false,
-
-            }).then( async (data) => {
-                const imgs = data
-                for (let img of imgs) {
-                    const base64str = img.data
-                    const imgExt = img.ext
-                    // convert image into blob type
-                    const blob = Compress.convertBase64ToFile(base64str, imgExt)
-    
-                    // convert blob => a file
-                    const file = new File([blob], img.alt, {
-                        type: imgExt,
-                        lastModified: new Date().getTime()
-                    })
-    
-                    resizedList.push(file)
-                }
-            })
-
-            // get initial data
-            let data = []
-            for (let file of formValues.section_image) 
-                data.push(file)
-
-            // add files from resized list
-            for (let file of resizedList) {
-                console.log(file)
-                data.push(file)
-            }
-                
-            setFormValues({ 
-                ...formValues, 
-                section_image: data })
-        } 
-        
-        else {
-            setFormErrors({ ...formErrors, [isValidSize.type]: isValidSize.message })
-        }
-    }
-
-    const removeUploadedImage = (e) => {
-        const sectionInputField = sectionFormRef.current.querySelector("input[name='section_image']")
-        sectionInputField.value = ""
-        setFormValues({...formValues, section_image: []})
-    }
-
     const handleTick = (e) => {
-        setFormValues({ ...formValues, section_public: !formValues.section_public })
+        // setFormValues({ ...formValues, section_public: !formValues.section_public })
+        dispatch(handleSection({...form.section, section_public: !form.section.section_public}))
     }
 
-    const handleChange = async (e) => {
-        const { name, value } = e.target;
-
-        // set errors
-        const validator = new FormValidation({ ...formValues, [name]: value })
+    const handleFormError = (name, value, data) => {
+        const validator = new FormValidation({ ...data })
         let validStatus = null
 
         switch (name) {
             case "section_title":
+                setFormSectionTitle(value)
+
                 const scanList = [
                     validator.isEmptyField(
                         value,
@@ -160,126 +103,98 @@ const SectionFormComponent = (props) => {
                 break
         }
 
-        setFormValues({ ...formValues, [name]: value });
-        setFormErrors({ ...formErrors, [validStatus.type]: validStatus.message })
+        // setFormValues({ ...formValues, [name]: value });
+
+        if (validStatus !== null)
+            setFormErrors({ ...formErrors, [validStatus.type]: validStatus.message })
+    }
+
+    const handleChange = async (e) => {
+        if (!onProgess) {setOnProgress(true)}
+
+        const { name, value } = e.target;
+        const data = { ...formValues, [name]: value }
+        
+        setFormValues({...data})
+
+        // set errors
+        handleFormError(name, value, data)
     };
 
-    const renderImagesList = (list) => {
-        console.log(list)
-
-        if (list.length > 0) {
-            return list.map((item, index) => {
-                return (
-                    <div className="image-wrapper" key={index}>
-                        <div className="image-hover">
-                            <i 
-                                id={index}
-                                className="far fa-trash-alt" 
-                                onClick={((e) => {
-                                    const idx = e.target.id
-                                    let copied = [...formValues.section_image]
-                                    copied.splice(idx, 1)
-                                    setFormValues({...formValues, section_image: [...copied]})
-
-                                    // const sectionInputField = sectionFormRef.current.querySelector("input[name='section_image']")
-                                    // sectionInputField.value = ""
-                                })}/>
-                        </div>
-                        <div 
-                            style={{backgroundImage: `url("${(() =>  URL.createObjectURL(item))()}")`}}
-                            className="image-content">
-
-                            <img 
-                                key={index}
-                                alt="section_image"
-                                src={(() =>  URL.createObjectURL(item))()} />
-                        </div>
-                    </div>
-                )
-            })
-        }
-    }
-
-    const renderImage = (list) => {
-        return (
-            <div className="form-field">
-                <legend className="section_content">
-                    <p>Section Images</p>
-                </legend>
-
-                <div className="control-buttons-wrapper">
-                    <input 
-                        type="button" 
-                        className="choose-btn"
-                        value="Choose Images"
-                        onClick={(() => {
-                            const chooseImageBtn = sectionFormRef.current.querySelector("input[name='section_image']")
-                            chooseImageBtn.click()
-                        })}/>
-
-                    {formValues.section_image.length > 0  && <input
-                        type="button"
-                        className="clear-btn"
-                        value="Clear"
-                        onClick={(e) => { removeUploadedImage(e) }} />}
-                </div>
-                
-                <input
-                    hidden={true}
-                    type="file"
-                    name="section_image"
-                    id="section_image"
-                    onChange={ async (e) => {
-                        await handleUploadedImage(e)
-                    }}
-                    accept="image/*" 
-                    multiple={true} />
-
-                <div className="preview-section-wrapper">
-                    <div className="preview-section">
-                        {renderImagesList(list)}
-                    </div>
-                </div>
-
-                {formErrors.section_image && 
-                    <span 
-                        className="error-msg">
-                        {formErrors.section_image}
-                    </span>}
-            </div>
+    const memorizeRenderImage = useMemo(() => {
+        return fileHelpers.renderImage(
+            true,
+            sectionFormRef,
+            formErrors,
+            setFormErrors,
+            formFiles,
+            setFormFiles,
+            accessFormValidation,
+            "section"
         )
-    }
+    }, [formFiles])
 
     const reorganizeData = () => {
         let data = new FormData()
-        data.append("request_event", "register_user")
+        data.append("event", "add_section")
         for (let [key, value] of Object.entries(formValues))
-            data.append(key, value)
+            if (key.includes("image") && value.length > 0) {
+                for (let image of value) 
+                    data.append(key, image, image.name)
+            }
+            else
+                data.append(key, value)
+
         return data
     }
 
     const handleSubmit = (e) => {
         e.preventDefault()
 
-        const data = reorganizeData()
+        // validate values before save
+        for (var require of requiredList) {
+            handleFormError(require, formValues[require], {...formValues})
 
-        // axiosInstance
-        //     .section("/user/register/", data)
-        //     .then((res) => {
-        //         console.log(res.data)
-        //     })
+            if (formErrors[require] !== "") 
+                return     
+        }
+
+        setFormValues({...formValues, section_content:formSectionContent})
+
+        dispatch(actions.setProgressingSection(form.section))
+        
+        dispatch(actions.handleSection(data))
+        setFormSectionTitle("")
+        setFormSectionContent("")
+        setOnProgress(false)
+
+        // append images to form.formFiles.images
+        var base_64_images_list = []
+
+        for (var image of formFiles) {
+            var base_64_img = URL.createObjectURL(image)
+            base_64_images_list.push(base_64_img)
+        }
+
+        dispatch(actions.handleFormImages("section", [...base_64_images_list]))
+        dispatch(actions.setSectionOnProgress(false))
     }
 
     return (
         <SectionFormWrapper ref={sectionFormRef} enctype="multipart/form-data">
-            {console.log(selectedText)}
-            {/* {console.log(formValues.section_image.length)} */}
-            {/* {console.log(formErrors)} */}
-            {console.log(formValues.section_content)}
-    
             <div className="form-title">
                 <h2>New Section</h2>
             </div>
+
+            {/* <input 
+                className="add-new-section-btn" 
+                type="button" 
+                value="Add New Section"
+                onClick={() => {
+                    setFormValues({...formValues, section_id: section_id + 1})
+                    dispatch(actions.handleSection(formValues))
+                    dispatch(app_actions.setProgressingSection(formValues))
+                }} /> */}
 
             <div className="form-content">
                 <div className="form-field">
@@ -291,10 +206,8 @@ const SectionFormComponent = (props) => {
                         type="text"
                         name="section_title"
                         id="section_title"
-                        value={formValues.section_title}
-                        onChange={handleChange}
-                    // onFocus={handleChange}
-                    />
+                        value={formSectionTitle}
+                        onChange={handleChange} />
                     {formErrors.section_title && <span className="error-msg">{formErrors.section_title}</span>}
                 </div>
 
@@ -303,18 +216,21 @@ const SectionFormComponent = (props) => {
                         <p>Section Content</p>
                     </legend>
 
-                    <div>{Parser(formValues.section_content)}</div>
+                    {/* <div>{Parser(formSectionContent)}</div> */}
 
                     <div className="text-editor-wrapper">
-                        <TextEditorComponent formValues={formValues} setFormValues={setFormValues} />
+                        <TextEditorComponent 
+                            formSectionContent={formSectionContent} 
+                            setFormSectionContent={setFormSectionContent} />
                     </div>
                 </div>
+
+                {/* {memorizeSectionContent} */}
 
                 <div
                     style={{
                         display: "flex",
                         flexDirection: "row",
-                        // justifyContent: "center",
                         alignItems: "center",
                     }}
                     className="form-field">
@@ -323,22 +239,49 @@ const SectionFormComponent = (props) => {
                     </legend>
                     <i
                         style={{
-                            // width: "25px",
-                            // height: "25px",
                             fontSize: "16pt",
                             color: "black",
                         }}
                         onClick={handleTick}
-                        className={formValues.section_public ? "far fa-check-square" : "far fa-square"}></i>
+                        className={form.section.section_public ? "far fa-check-square" : "far fa-square"}></i>
                 </div>
 
-                {renderImage(formValues.section_image)}
+                {memorizeRenderImage}
 
                 <div 
                     className="submit-wrapper">
-                    <button
-                        onClick={handleSubmit}
-                        type="submit">Submit</button>
+                    
+                    {form.form_status.section && 
+                    <button 
+                        type="button"
+                        value="Cancel"
+                        onClick={() => {
+                            setFormSectionTitle("")
+                            setFormSectionContent("")
+                            // dispatch(handleSection({...intialValues}))
+                            // dispatch(handleFormStatus("section", { ...form.section }))
+                            const element = sectionFormRef.current.querySelector("div.ql-editor")
+                            element.innerHTML = '<p style="font-size: 12pt;"><br/></p>'
+                            props.setAddSection(false)
+                        }} >Cancel</button>}
+                    
+
+                    {(() => {
+                        if (onProgess) {
+                            return (
+                                <input
+                                    type="button"
+                                    name="save_section"
+                                    value="Save Section"
+                                    onClick={((e) => {
+                                        if (e.target.name === "save_section") {
+                                            handleSubmit(e)
+                                        } 
+                                    })} />
+                            )
+                        }
+                    })()}
+                    
                 </div>
             </div>
         </SectionFormWrapper>
@@ -363,23 +306,19 @@ const SectionFormWrapper = styled.form`
     textarea, 
     input[type="text"] {
         width: 100%;
-        background-color: aliceblue;
-        border: none;
+        /* background-color: aliceblue; */
+        /* border: none; */
         border-radius: 5px;
         outline: none;
         font-size: 12pt;
         padding: 5px;
-        -webkit-box-shadow: -1px 2px 11px 2px rgba(0,0,0,0.5); 
-        box-shadow: -1px 2px 9px 2px rgba(0,0,0,0.5);
+        /* -webkit-box-shadow: -1px 2px 11px 2px rgba(0,0,0,0.5); 
+        box-shadow: -1px 2px 9px 2px rgba(0,0,0,0.5); */
         margin-bottom: 15px;
     }
 
     input[type="text"] {
         height: 35px;
-    }
-
-    textarea {
-        background-color: aliceblue;
     }
 
     span.error-msg {
@@ -415,7 +354,6 @@ const SectionFormWrapper = styled.form`
         margin-left: 3px;
         /* font-stretch: 100%; */
         
-
         &:hover {
             background-color: rgb(125, 124, 124);
             color: white;

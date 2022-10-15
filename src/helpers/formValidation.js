@@ -49,17 +49,6 @@ class FormValidation {
 
     zip = (a, b) => Array(Math.max(b.length, a.length)).fill().map((_, i) => [a[i], b[i]])
 
-    // findBoolean = (array) => {
-    //     let i = 0
-    //     while (i < array.length) {
-    //         if (array[i])
-    //             i += 1
-    //         else
-    //             break
-    //     }
-    //     return i
-    // }
-
     setValidationType = (type) => {
         this.returnValue.type = type
     }
@@ -77,7 +66,6 @@ class FormValidation {
     }
 
     isEmptyField = (value, message, error_type) => {
-        console.log(value)
         this.setValidationType(error_type)
         if (value.toString().length === 0) {
             this.returnValue.status = false
