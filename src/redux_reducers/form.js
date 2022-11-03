@@ -5,6 +5,7 @@ import { OverwriteObject } from "helpers/overwrite"
 import { isEmptyObject } from "helpers/objectHelper";
 
 const INITIAL_STATE = {
+    unfinished_post: null,
     form_status: {
         post: false,
         section: false,
@@ -71,6 +72,14 @@ const formReducer = (state = INITIAL_STATE, action) => {
             state.section = {...state.section, ...action.payload}
             return {...state}
 
+        case actionTypes.UPDATE_POST_FORM:
+            state.post = {...action.payload}
+            return {...state}
+
+        case actionTypes.UPDATE_SECTION_FORM:
+            state.section = {...action.payload}
+            return {...state}
+
         case actionTypes.HANDLE_FORM_STATUS:
             if (isEmptyObject(action.payload.data)) 
                 state.form_status[action.payload.form_name] = false
@@ -78,7 +87,24 @@ const formReducer = (state = INITIAL_STATE, action) => {
                 state.form_status[action.payload.form_name] = true
 
             return {...state}
-            
+        
+        case actionTypes.UPDATE_POST_SECTION:
+            const i = action.payload.index
+            if (i >= 0) 
+                state.post.post_section.splice(i, 1, action.payload.section)
+            else
+                state.post.post_section.push(action.payload.section)
+                
+            return {...state}
+
+        case actionTypes.SET_UNFINISHED_POST:
+            if (action.payload !== null)
+                state.unfinished_post = {...action.payload}
+            else
+                state.unfinished_post = null
+                
+            return {...state}
+
         default:
             return state
 

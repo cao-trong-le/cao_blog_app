@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { BrowserRouter as Router, Switch, Route, Redirect, matchPath } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+// import { AnimatePresence } from "framer-motion";
 
 import * as userActions from "redux_actions/userActions";
 import { useSelector } from "react-redux";
@@ -15,31 +15,46 @@ import {
   PostFormComponent,
   LoginFormComponent,
   RegisterFormComponent,
-  CreatePostComponent
+  CreatePostComponent,
+  PostViewComponent
 } from "./components";
 
 
+
+
 const App = (props) => {
+  const [hash, setHash] = useState(window.location.href)
   const user = useSelector((state) => state.user)
+
+  // useEffect(() => {
+  //   window.addEventListener("mouseup", (ev) => {
+  //     console.log(ev.AT_TARGET)
+  //   })
+  // }, [])
+
+  // useEffect(() => {
+  //   console.log("say hello")
+  //   console.log(window.location.href)
+  //   setHash(window.location.href)
+  // }, [window.location.href])
 
   const router = () => {
     return (
-      <AnimatePresence>
-        <Switch>
-          {/* How to set default index page */}
-          <Route
-            exact
-            path="/"
-            render={() => {
-              return <Redirect to="/home/posts/" />
-            }}
-          />
-          <Route exact path="/home/posts/" component={HomeComponent} />
-          <Route exact path="/new/post/" component={CreatePostComponent} />
-          <Route exact path="/register/" component={RegisterFormComponent} />
-          <Route exact path="/login/" component={LoginFormComponent} />
-        </Switch>
-      </AnimatePresence>
+      <Switch>
+        {/* How to set default index page */}
+        <Route
+          exact
+          path="/"
+          render={() => {
+            return <Redirect to="/home/posts/" />
+          }}
+        />
+        <Route exact path="/home/posts/" component={HomeComponent} />
+        <Route exact path="/home/posts/:post_code/" component={PostViewComponent} />
+        <Route exact path="/new/post/" component={CreatePostComponent} />
+        <Route exact path="/register/" component={RegisterFormComponent} />
+        <Route exact path="/login/" component={LoginFormComponent} />
+      </Switch>
     )
   }
 
@@ -55,7 +70,7 @@ const App = (props) => {
 }
 
 const AppComponent = styled.div`
-  width: 75%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;

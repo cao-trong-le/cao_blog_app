@@ -8,62 +8,59 @@ import { FormValidation } from "helpers/formValidation";
 import Compress from "compress.js";
 import ReactDOM from "react-dom/client";
 import Parser from "html-react-parser";
-
+import axiosInstance from "axios_instance/axios_instance";
 import { useSelector, useDispatch } from "react-redux";
 import * as form_actions from "redux_actions/formActions";
 import * as app_actions from "redux_actions/appActions";
+import * as fHelper from "helpers/fileHelpers";
 
 const actions = {
     ...form_actions,
     ...app_actions
 }
 
-import { TextEditorComponent } from "./textEditor";
+// import { TextEditorComponent } from "./textEditor";
 
 import * as fileHelpers from "helpers/fileHelpers";
+import { Axios } from "axios";
 
 const SectionFormComponent = (props) => {
     // create later
     const sectionFormRef = useRef()
 
-    const intialValues = {
-        section_id: 0,
-        section_title: "",
-        section_content: "",
-        section_image: [],
-        section_public: true,
-    }
-
     const [formFiles, setFormFiles] = useState([]);
-    const [formValues, setFormValues] = useState(intialValues);
+    // const [formValues, setFormValues] = useState(intialValues);
     const [formSectionTitle, setFormSectionTitle] = useState("")
     const [formSectionContent, setFormSectionContent] = useState("")
     const [formErrors, setFormErrors] = useState({});
     const [onProgess, setOnProgress] = useState(false)
-    const [isSaved, setIsSaved] = useState(false);
+    const [isSaved, setIsSaved] = useState(false)
+    const [files, setFiles] = useState([])
 
     const requiredList = ["section_title"]
 
-    useEffect(() => {
-        // get the id of the last element in progress sections list
-        dispatch(actions.handleSection({
-            ...formValues, 
-            section_content: formSectionContent
-        }))
-    }, [formValues, formSectionContent])
+    // useEffect(() => {
+    //     // get the id of the last element in progress sections list
+    //     dispatch(actions.handleSection({...formValues}))
+    // }, [formValues, formSectionContent])
 
     const dispatch = useDispatch()
     const form = useSelector((state) => state.form)
+    const user = useSelector((state) => state.user)
     const app = useSelector((state) => state.app)
 
+    const ref = useRef()
+
     const accessFormValidation = () => {
-        const formValidate = new FormValidation({ ...formValues })
+        const formValidate = new FormValidation({ ...form.section })
         return formValidate
     }
 
     const handleTick = (e) => {
         // setFormValues({ ...formValues, section_public: !formValues.section_public })
-        dispatch(handleSection({...form.section, section_public: !form.section.section_public}))
+        dispatch(actions.handleSection({ 
+            ...form.section, 
+            section_public: !form.section.section_public }))
     }
 
     const handleFormError = (name, value, data) => {
@@ -113,9 +110,11 @@ const SectionFormComponent = (props) => {
         if (!onProgess) {setOnProgress(true)}
 
         const { name, value } = e.target;
-        const data = { ...formValues, [name]: value }
+        const data = { ...form.section, [name]: value }
         
-        setFormValues({...data})
+        // setFormValues({...data})
+
+        dispatch(actions.handleSection({...data}))
 
         // set errors
         handleFormError(name, value, data)
@@ -134,6 +133,104 @@ const SectionFormComponent = (props) => {
         )
     }, [formFiles])
 
+    const renderPreviewSectionFiles = useMemo(() => {
+        return (
+            <div className="preview-section-files">
+                {files.map((file) => {
+                    return (
+                        <div className="preview-file-wrapper">
+                            <img
+                                alt="preview-file"
+                                src={(() => {
+                                    const file_type = file.type
+                                    switch (file_type) {
+                                        case "application/pdf":
+                                            return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/pdf.png"
+
+                                        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                                            return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/doc.png"
+
+                                        case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                                            return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/xlsx.png"
+                                        
+                                        default:
+                                            break
+                                    }
+                                })()} />
+
+                            <p className="file-name">{file.name}</p>
+                        </div>
+                    )
+                })}
+            </div>
+        )
+    }, [files])
+
+    const renderPreviewSectionImages = useMemo(() => {
+        return (
+            <PreviewImagesWrapper className="preview-image-wrapper">
+                {(() => {
+                    var section_images = form.section.section_image
+
+                    return section_images.map((image, idx) => {
+                        var copied = [...section_images]
+
+                        return (
+                            <div 
+                                key={idx} 
+                                className={`section-image-wrapper-form-${image.image_code}`}>
+                                <img 
+                                    className={`section-image-${image.image_code}`}
+                                    data-image-code={image.image_code}
+                                    src={image.image_content} 
+                                    alt="section image" />
+
+                                <input
+                                    className="change-image-btn"
+                                    type="button" 
+                                    value="Change"
+                                    onClick={ async (e) => {
+                                        // handleDeleteImageOnUpdate(e, idx)
+                                        const fileBtn = document.querySelector(`.change-section-img-btn-${image.image_code}`)
+                                        fileBtn.click()
+                    
+                                    }} />
+
+                                <input
+                                    type="file"
+                                    multiple={false}
+                                    hidden={true}
+                                    className={`change-section-img-btn-${image.image_code}`}
+                                    onChange={ async (e) => {
+                                        const image = await fHelper.handleUploadedImageOnUpdate(
+                                            e, 
+                                            formErrors,
+                                            setFormErrors,
+                                            accessFormValidation
+                                        )
+
+                                        // send a add section image request
+                                        await handleUpdateImageOnUpdate(idx, image[0])
+                                        
+                                        // clear all data when it's done!!!
+                                        e.target.value = ""
+                                    }} />
+                                
+                                <input 
+                                    className="remove-image-btn"
+                                    type="button" 
+                                    value="Remove"
+                                    onClick={(e) => {
+                                        handleDeleteImageOnUpdate(e, idx)
+                                    }} />
+                            </div>
+                        )
+                    })
+                })()}
+            </PreviewImagesWrapper>
+        )
+    }, [form.section.section_image])
+
     const reorganizeData = () => {
         let data = new FormData()
         data.append("event", "add_section")
@@ -148,53 +245,253 @@ const SectionFormComponent = (props) => {
         return data
     }
 
-    const handleSubmit = (e) => {
+
+    // handle files
+    const handleAddFiles = async () => {
+        const formData = new FormData()
+        formData.append("event", "add_section_files")
+        formData.append("section_code", form.section.section_code)
+        
+        for (var file of files) {
+            formData.append("section_file", file, file.name)
+        }
+
+        axiosInstance.post("blog/sections/", formData)
+        .then((res) => {
+            console.log(res)
+            setFiles([])
+
+            // post
+            const post = res.data.post
+            dispatch(actions.handlePost({...form.post, ...post}))
+            
+            // section
+            const section = res.data.section
+            dispatch(actions.handleSection({...form.section, ...section}))
+
+        })
+        .catch((err) => {
+            console.log(err)
+        })
+    }
+
+    const handleUpdateFile = async (file, file_code) => {
+        console.log(file, file_code)
+
+        const formData = new FormData()
+        formData.append("event", "update_section_file")
+        formData.append("file_code", file_code)
+        formData.append("new_file", file, file.name)
+
+        axiosInstance.post("blog/sections/", formData)
+        .then((res) => {
+            // post
+            const post = res.data.post
+            dispatch(actions.handlePost({...form.post, ...post}))
+            
+            // section
+            const section = res.data.section
+            dispatch(actions.handleSection({...form.section, ...section}))
+        })
+        .catch((err) => {
+            console.log(err)
+        })
+    }
+
+    const handleDeleteFile = async (file_code) => {
+        const formData = new FormData()
+        formData.append("event", "delete_section_file")
+        formData.append("file_code", file_code)
+
+        axiosInstance.post("blog/sections/", formData)
+        .then((res) => {
+            // post
+            const post = res.data.post
+            dispatch(actions.handlePost({...form.post, ...post}))
+            
+            // section
+            const section = res.data.section
+            dispatch(actions.handleSection({...form.section, ...section}))
+
+        })
+        .catch((err) => {
+            console.log(err)
+        })
+    }
+
+    const handleUpdateImageOnUpdate = async (idx, image) => {
+        console.log("update on progress")
+        // get section code
+        const section_code = form.section.section_code
+
+        // get image code by idx
+        const image_code = form.section.section_image[idx].image_code
+        console.log(image_code)
+
+        // get new image
+        const new_image = image
+        console.log(new_image)
+
+        const formData = new FormData()
+        formData.append("event", "update_section_image")
+        formData.append("section_code", section_code)
+        formData.append("image_code", image_code)
+        formData.append("new_image", new_image, new_image.name)
+
+        // send request to update image
+        axiosInstance.post("blog/sections/", formData)
+        .then((res) => {
+            // dispatch(actions.handleSection({...res.data.section}))
+
+            // dispatch(actions.updatePosts(res.data.post))
+            // dispatch(actions.handlePost({...res.data.post}))
+
+            dispatch(actions.updatePostForm({...res.data.post}))
+
+            // update section form
+            // dispatch(actions.handleSection({...res.data.section}))
+            dispatch(actions.updateSectionForm({...res.data.section}))
+
+            dispatch(actions.updatePosts({...res.data.post}))
+
+            // replace HTML element
+            const sectionImage = document.querySelector(`.section-image-${image_code}`)
+            sectionImage.setAttribute("src", res.data.image.image_content)
+        })
+        .catch((err) => {
+            console.log(err)
+        })
+    }
+
+    const handleAddImageOnUpdate = async (images) => {
+        const formData = new FormData()
+        formData.append("event", "add_section_images")
+        formData.append("post_code", form.post.post_code)
+        formData.append("section_code", form.section.section_code)
+
+        for (var image of images) {
+            formData.append("section_image", image, image.name)
+        }
+    
+        axiosInstance.post("blog/sections/", formData)
+        .then((res) => {
+            console.log(res)
+            dispatch(actions.handleSection({
+                ...form.section, 
+                section_image: res.data.section.section_image
+            }))
+
+            dispatch(actions.handlePost({
+                ...form.post,
+                ...res.data.post
+            }))
+
+            // handle animation
+        })
+        .catch((err) => {
+            console.log(err)
+        })
+    }
+
+    const handleDeleteImageOnUpdate = async (e, imageIdx) => {
+        // remove section request
+        var form_data = new FormData()
+        form_data.append("event", "delete_section_image")
+        form_data.append("section_code", form.section.section_code)
+
+        // find image code => app.posts
+        // find post code => find section by post code
+
+        const image = form.section.section_image[imageIdx]
+        const image_code = image.image_code
+        
+        form_data.append("image_code", image_code)
+
+        axiosInstance
+        .post("blog/sections/", form_data)
+        .then((res) => {
+            console.log(res.data)
+            // update post 
+            
+            // update post form
+            // dispatch(actions.handlePost({...res.data.post}))
+            dispatch(actions.updatePostForm({...res.data.post}))
+
+            // update section form
+            // dispatch(actions.handleSection({...res.data.section}))
+            dispatch(actions.updateSectionForm({...res.data.section}))
+
+            dispatch(actions.updatePosts({...res.data.post}))
+
+            // remove HTML element
+            // const image_wrapper_HTML_element = document.querySelector(`.section-image-wrapper-form-${image_code}`)
+            // image_wrapper_HTML_element.style.display = "none"
+        })
+        .catch((err) => {
+            console.log(err)
+        })
+    }
+
+    const handleUpdateSectionContent = async (e) => {
         e.preventDefault()
 
         // validate values before save
-        for (var require of requiredList) {
-            handleFormError(require, formValues[require], {...formValues})
+        // for (var require of requiredList) {
+        //     handleFormError(
+        //         require, 
+        //         form.section[require], 
+        //         {...form.section}
+        //     )
 
-            if (formErrors[require] !== "") 
-                return     
-        }
+        //     if (formErrors[require] !== "") 
+        //         return     
+        // }
 
-        setFormValues({...formValues, section_content:formSectionContent})
-
-        dispatch(actions.setProgressingSection(form.section))
+        // update post section in the post as well
         
-        dispatch(actions.handleSection(data))
-        setFormSectionTitle("")
-        setFormSectionContent("")
-        setOnProgress(false)
+        var form_data = new FormData()
+        form_data.append("event", "update_section_content")
+        form_data.append("section_code", form.section.section_code)
+        form_data.append("section_title", form.section.section_title)
+        form_data.append("section_content", form.section.section_content)
+        form_data.append("section_public", form.section.section_public)
 
-        // append images to form.formFiles.images
-        var base_64_images_list = []
+        axiosInstance
+        .post("blog/sections/", form_data)
+        .then((res) => {
+            console.log(res.data)
+            dispatch(actions.setOnProgress("section", false))
+            if (res.status === 202) {
+                dispatch(actions.updatePostSection(app.section_edit.index, form.section))
+                props.setNewSectionBtn(true)
+                dispatch(actions.setSectionEdit(false, -1))
 
-        for (var image of formFiles) {
-            var base_64_img = URL.createObjectURL(image)
-            base_64_images_list.push(base_64_img)
-        }
+                dispatch(actions.updatePostForm({...res.data.post}))
 
-        dispatch(actions.handleFormImages("section", [...base_64_images_list]))
-        dispatch(actions.setSectionOnProgress(false))
+                // update section form
+                dispatch(actions.handleSection({
+                    ...form.section, 
+                    ...res.data.section
+                }))
+                // dispatch(actions.updateSectionForm({...res.data.section}))
+
+                dispatch(actions.updatePosts({...res.data.post}))
+            }
+            // Add new section to queue right away
+            
+            return
+        })
+        .catch((err) => {
+            console.log(err)
+        })
     }
 
+    // html
     return (
         <SectionFormWrapper ref={sectionFormRef} enctype="multipart/form-data">
             <div className="form-title">
                 <h2>New Section</h2>
             </div>
-
-            {/* <input 
-                className="add-new-section-btn" 
-                type="button" 
-                value="Add New Section"
-                onClick={() => {
-                    setFormValues({...formValues, section_id: section_id + 1})
-                    dispatch(actions.handleSection(formValues))
-                    dispatch(app_actions.setProgressingSection(formValues))
-                }} /> */}
 
             <div className="form-content">
                 <div className="form-field">
@@ -206,7 +503,7 @@ const SectionFormComponent = (props) => {
                         type="text"
                         name="section_title"
                         id="section_title"
-                        value={formSectionTitle}
+                        value={form.section.section_title}
                         onChange={handleChange} />
                     {formErrors.section_title && <span className="error-msg">{formErrors.section_title}</span>}
                 </div>
@@ -215,17 +512,13 @@ const SectionFormComponent = (props) => {
                     <legend className="section_content">
                         <p>Section Content</p>
                     </legend>
-
-                    {/* <div>{Parser(formSectionContent)}</div> */}
-
-                    <div className="text-editor-wrapper">
-                        <TextEditorComponent 
-                            formSectionContent={formSectionContent} 
-                            setFormSectionContent={setFormSectionContent} />
-                    </div>
+                    <textarea
+                        type="text"
+                        name="section_content"
+                        id="section_content"
+                        value={form.section.section_content}
+                        onChange={handleChange} />
                 </div>
-
-                {/* {memorizeSectionContent} */}
 
                 <div
                     style={{
@@ -246,7 +539,204 @@ const SectionFormComponent = (props) => {
                         className={form.section.section_public ? "far fa-check-square" : "far fa-square"}></i>
                 </div>
 
-                {memorizeRenderImage}
+                {/* render preview images */}
+
+                
+                {/* {memorizeRenderImage} */}
+
+                <div className="form-field section_content">
+                    <legend className="section_content">
+                        <p>Section Images</p>
+                    </legend>
+                    
+                    {renderPreviewSectionImages}
+
+                    <input
+                        type="button"
+                        value="Add Images"
+                        onClick={() => {
+                            const fileBtn = document.querySelector(".section-img-file")
+                            fileBtn.click()
+                        }} />
+                 
+                    <input
+                        type="file"
+                        multiple={true}
+                        className="section-img-file"
+                        accept="image/*"
+                        hidden={true}
+                        onChange={ async (e) => {
+                            const images = await fHelper.handleUploadedImageOnUpdate(
+                                e, 
+                                formErrors,
+                                setFormErrors,
+                                accessFormValidation
+                            )
+
+                            // send a add section image request
+                            await handleAddImageOnUpdate(images)
+
+                            e.target.value = ""
+                        }} />
+
+                    <input
+                        type="button"
+                        value="Clear"
+                        onClick={() => {
+                            const fileBtn = document.querySelector(".section-img-file")
+                            // fileBtn.setAttribute("value", "")
+                            fileBtn.value = ""
+                        }} />
+                </div>
+
+                <div className="form-field section_content">
+                    <legend className="section_content">
+                        <p>Section Files</p>
+                    </legend>
+                    
+                    {/* {renderPreviewSectionImages} */}
+
+                    <div 
+                        style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            width: "100%",
+                            height: "150px"
+                        }}
+                        className="preview-existed-files">
+
+                        {form.section.section_file.map((file) => {
+                            // extract file type
+                            // display file icon based on file type
+                            return (
+                                <div 
+                                    className="existing-file-wrapper"
+                                    style={{
+                                        width: "80px",
+                                        height: "80px",
+                                        margin: "5px"
+                                    }}>
+                                    <img 
+                                        alt="existing-file"
+                                        style={{
+                                            width: "100%",
+                                            height: "100%"
+                                        }}
+                                        src={(() => {
+                                            switch(fHelper.extractFileTypeFromAWSURL(file.file_content)) {
+                                                case "pdf":
+                                                    return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/pdf.png"
+                
+                                                case "docx":
+                                                    return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/doc.png"
+                
+                                                case "xlsx":
+                                                    return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/xlsx.png"
+                                                
+                                                default:
+                                                    break
+                                            }
+                                        })()} 
+                                    />
+                                    <p className="existing-file-name">
+                                        {fHelper.extractFileNameFromAWSURL(file.file_content, 5)}
+                                    </p>
+
+                                    <div className="existing-file-functions">
+                                        <input
+                                            type="button"
+                                            data-file-code={file.file_code}
+                                            className="change-btn"
+                                            value="Change File"
+                                            onClick={(e) => {
+                                                const target = document.querySelector(".existing-file-input")
+                                                target.click()
+                                            }} />
+
+                                        <input
+                                            type="file"
+                                            data-file-code={file.file_code}
+                                            multiple={false}
+                                            accept=".docx,.doc,.pdf,.xlsx"
+                                            className="existing-file-input"
+                                            hidden={true}
+                                            onChange={ async (e) => {
+                                                if (e.target.files.length == 0) 
+                                                    return
+
+                                                const file = e.target.files[0]
+                                                const file_code = e.target.getAttribute("data-file-code")
+
+                                                // console.log(file_code)
+
+                                                await handleUpdateFile(file, file_code)
+
+                                                e.target.value = ""
+                                            }} />
+
+                                        <input
+                                            type="button"
+                                            data-file-code={file.file_code}
+                                            className="delete-btn"
+                                            value="Delete"
+                                            onClick={ async (e) => {
+                                                const file_code = e.target.getAttribute("data-file-code")
+                                                await handleDeleteFile(file_code)
+                                            }} />
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+
+                    {renderPreviewSectionFiles}
+
+                    <input
+                        type="button"
+                        value="Add Files"
+                        onClick={() => {
+                            const fileBtn = document.querySelector(".section-file-input")
+                            fileBtn.click()
+                        }} />
+                 
+                    <input
+                        type="file"
+                        multiple={true}
+                        accept=".docx,.doc,.pdf,.xlsx"
+                        className="section-file-input"
+                        hidden={true}
+                        onChange={ async (e) => {
+                            if (e.target.files.length == 0) 
+                                return
+
+                            // send a add section image request
+                           
+                            // add files to files state
+
+                            setFiles([...files, ...e.target.files])
+
+                            e.target.value = ""
+                        }} />
+
+                    <input
+                        type="button"
+                        value="Upload"
+                        onClick={() => {
+                            if (files.length > 0) {
+                                handleAddFiles()
+                            }
+                        }} />
+
+                    <input
+                        type="button"
+                        value="Clear"
+                        onClick={() => {
+                            const fileBtn = document.querySelector(".section-img-file")
+                            // fileBtn.setAttribute("value", "")
+                            // fileBtn.value = ""
+                            setFiles([])
+                        }} />
+                </div>
 
                 <div 
                     className="submit-wrapper">
@@ -256,27 +746,27 @@ const SectionFormComponent = (props) => {
                         type="button"
                         value="Cancel"
                         onClick={() => {
-                            setFormSectionTitle("")
-                            setFormSectionContent("")
+                            // setFormSectionTitle("")
+                            // setFormSectionContent("")
                             // dispatch(handleSection({...intialValues}))
                             // dispatch(handleFormStatus("section", { ...form.section }))
-                            const element = sectionFormRef.current.querySelector("div.ql-editor")
-                            element.innerHTML = '<p style="font-size: 12pt;"><br/></p>'
-                            props.setAddSection(false)
+                            // const element = sectionFormRef.current.querySelector("div.ql-editor")
+                            // element.innerHTML = '<p style="font-size: 12pt;"><br/></p>'
+                            // props.setAddSection(false)
                         }} >Cancel</button>}
                     
 
                     {(() => {
-                        if (onProgess) {
+                        if (app.section_on_progress) {
                             return (
                                 <input
                                     type="button"
                                     name="save_section"
                                     value="Save Section"
-                                    onClick={((e) => {
-                                        if (e.target.name === "save_section") {
-                                            handleSubmit(e)
-                                        } 
+                                    onClick={( async (e) => {
+                                        await handleUpdateSectionContent(e)
+                                        if (app.section_edit.status) 
+                                            props.setNewSectionBtn(false)
                                     })} />
                             )
                         }
@@ -288,7 +778,12 @@ const SectionFormComponent = (props) => {
     )
 }
 
+
 export { SectionFormComponent }
+
+const PreviewImagesWrapper = styled.div`
+
+`;
 
 const SectionFormWrapper = styled.form`
     display: flex;

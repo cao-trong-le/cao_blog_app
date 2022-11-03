@@ -1,9 +1,23 @@
 import * as actionTypes from "./actionTypes"
 
+export const setHomePageReload = (status) => dispatch => {
+    dispatch({
+        type: actionTypes.SET_HOMEPAGE_RELOAD,
+        payload: status
+    })
+}
+
 export const setPage = (page) => dispatch => {
     dispatch({
         type: actionTypes.SET_PAGE,
         payload: page
+    })
+}
+
+export const setNumPages = (num_pages) => dispatch => {
+    dispatch({
+        type: actionTypes.SET_NUM_PAGES,
+        payload: num_pages
     })
 }
 
@@ -14,10 +28,17 @@ export const setPosts = (posts) => dispatch => {
     })
 }
 
-export const setSelecting = () => dispatch => {
+export const addPost = (post) => dispatch => {
+    dispatch({
+        type: actionTypes.ADD_POST,
+        payload: post
+    })
+}
+
+export const setSelecting = (status) => dispatch => {
     dispatch({
         type: actionTypes.SET_SELECTING_STATUS,
-        payload: null
+        payload: status
     })
 }
 
@@ -53,28 +74,35 @@ export const removeAllFromPostsList = () => dispatch => {
     })   
 };
 
+// set all to default
+export const setDefaultProgressingSection = () => dispatch => {
+    dispatch({
+        type: actionTypes.SET_DEFAULT_PROGRESSING_SECTIONS,
+        payload: []
+    })   
+};
+
 // set sections
-export const setProgressingSection = (sections) => dispatch => {
+export const setProgressingSection = (section) => dispatch => {
     dispatch({
         type: actionTypes.SET_PROGRESSING_SECTIONS,
-        payload: sections
+        payload: section
     })   
 };
 
-// set section on progress
-export const setSectionOnProgress = (status) => dispatch => {
+// set on progress
+export const setOnProgress = (from, status) => dispatch => {
     dispatch({
-        type: actionTypes.SET_SECTION_ON_PROGRESS,
-        payload: status
+        type: actionTypes.SET_ON_PROGRESS,
+        payload: {
+            from: from, 
+            status: status
+        }
     })   
 };
 
-export const setPostOnProgress = (status) => dispatch => {
-    dispatch({
-        type: actionTypes.SET_POST_ON_PROGRESS,
-        payload: status
-    })   
-};
+
+// set edit
 
 export const editSection = (index, section) => dispatch => {
     dispatch({
@@ -85,4 +113,30 @@ export const editSection = (index, section) => dispatch => {
         }
     })   
 };
+
+export const setSectionEdit = (status, index) => dispatch => {
+    dispatch({
+        type: actionTypes.SET_SECTION_EDIT,
+        payload: {
+            status: status,
+            index: index
+        }
+    })   
+}
+
+export const setPostEdit = (status) => dispatch => {
+    dispatch({
+        type: actionTypes.SET_POST_EDIT,
+        payload: status,
+    })   
+}
+
+export const updatePosts = (post) => dispatch => {
+    dispatch({
+        type: actionTypes.UPDATE_POST,
+        payload: {
+            post: post
+        }
+    })   
+}
 

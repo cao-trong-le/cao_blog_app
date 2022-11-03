@@ -102,8 +102,6 @@ const LoginFormComponent = (props) => {
 
     return (
         <LoginFormWrapper autoComplete="off">
-            {console.log(formValues)}
-
             <div className="form-title">
                 <h1>Login</h1>
             </div>

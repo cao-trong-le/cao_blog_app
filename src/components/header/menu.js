@@ -6,24 +6,42 @@ import styled from "styled-components"
 import { useWindowDimensions } from "hooks";
 import { useHistory } from "react-router-dom";
 
+import axiosInstance from "axios_instance/axios_instance";
 import * as userActions from "redux_actions/userActions";
+import * as appActions from "redux_actions/appActions";
+import * as formActions from "redux_actions/formActions";
+import { postDefaultValues, sectionDefaultValues } from "components/forms/defaultValues";
+
+import { NewPostPopUpComponent, PostTitlePopUpComponent } from "components/popups";
+
+const actions = {
+    ...userActions,
+    ...appActions,
+    ...formActions
+}
+
+
 import { useDispatch, useSelector } from "react-redux";
 
 const HeaderComponent = (props) => {
     const [burger, setBurger] = useState(false)
     const { width } = useWindowDimensions()
     const [directionsList, setDirectionsList] = useState([])
+    const [popUp, setPopUp] = useState(false)
+    const [titlePopUp, setTitlePopUp] = useState(false)
     
     const dispatch = useDispatch()
     const user = useSelector((state) => state.user)
+    const form = useSelector((state) => state.form)
+    const app = useSelector((state) => state.app)
 
     const history = useHistory()
 
-    useEffect(() => {
-        if (!user.login) {
-            history.push("/login/")
-        }
-    }, [])
+    // useEffect(() => {
+    //     if (!user.login) {
+    //         history.push("/login/")
+    //     }
+    // }, [])
 
     let directions = [
         {
@@ -70,14 +88,35 @@ const HeaderComponent = (props) => {
         },
     ]
 
-    useEffect(() => {
+    // useEffect(() => {
+    //     console.log("user login status has changed")
+
+    //     let hide_lists = null
+    //     let copied = [...directions]
+
+    //     if (user.login) 
+    //         hide_lists = ["log_in", "register"]
+    //     else 
+    //         hide_lists = ["log_out", "about_me", "contact_me", "new_post"]
+
+    //     for (let hide of hide_lists) {
+    //         let find_item = (item) => item.name === hide
+    //         let index = copied.findIndex(find_item)
+    //         copied.splice(index, 1)
+    //     }
+
+    //     setDirectionsList(() => [...copied])
+
+    // }, [user.login])
+
+    const renderListItemsInMenu = () => {
         let hide_lists = null
         let copied = [...directions]
 
         if (user.login) 
             hide_lists = ["log_in", "register"]
         else 
-            hide_lists = ["log_out", "about_me", "home", "contact_me", "log_in"]
+            hide_lists = ["log_out", "about_me", "contact_me", "new_post"]
 
         for (let hide of hide_lists) {
             let find_item = (item) => item.name === hide
@@ -85,44 +124,74 @@ const HeaderComponent = (props) => {
             copied.splice(index, 1)
         }
 
-        setDirectionsList(() => [...copied])
-
-    }, [user.login])
-
-    const renderListItemsInMenu = () => {
-        return directionsList.map((item, index) => {
+        return copied.map((item, index) => {
             return (
-                <Link 
+                <div 
                     className="direct-link" 
                     onClick={(() => {
-                        if (item.name === "log_out") 
-                            dispatch(userActions.logoutUser())
-                        if (item.name === "log_in") 
-                            dispatch(userActions.loginUser())
-                    })}
-                    to={item.url}>
+                        switch (item.name) {
+                            case "home":
+                                dispatch(actions.setHomePageReload(true))
+                                history.push(item.url)
+                                break
+
+                            case "log_out":
+                                dispatch(actions.logoutUser())
+                                history.push(item.url)
+                                break
+
+                            case "log_in":
+                                history.push(item.url)
+                                break
+
+                            case "new_post":
+                                // make a pop up ask user for saving on-progressing post or not
+                                // check recent state before asking
+
+                                if (!form.post.post_finished && form.post.post_finished !== undefined) {
+                                    setPopUp(true)
+                                }
+                                    
+                                else {
+                                    dispatch(actions.handlePost({...postDefaultValues}))
+                                    setTitlePopUp(true)
+                                }
+                                    
+                               
+                                // if not: reset post state 
+                                // if do: save old state and bring user to new state
+                                break
+                            
+                            default:
+                                history.push(item.url)
+                        }
+                    })}>
+
                     <DirectWrapper className="direct-wrapper" key={index}>
-                        <Link to={item.url}>
-                            {(() => {
-                                if (item.name === "about_me")
-                                    return <i 
-                                        style={{
-                                            height: "35px",
-                                            width: "35px",
-                                            backgroundImage: `url("${user.info.avatar}")`,
-                                            backgroundRepeat: "no-repeat",
-                                            backgroundPosition: "center",
-                                            backgroundSize: "100% 100%",
-                                            backgroundColor: "black",
-                                            borderRadius: "50%",
-                                        }}/>
-                                else 
-                                    return item.icon
-                            })()}
-                            <p>{item.title}</p>
-                        </Link>
+                        {(() => {
+                            if (item.name === "about_me")
+                                return <i 
+                                    style={{
+                                        height: "35px",
+                                        width: "35px",
+                                        backgroundImage: `url("${(() => {
+                                            if (user.info !== null)
+                                                return user.info.avatar
+                                            else
+                                                return "https://cao-blog-bucket.s3.us-east-2.amazonaws.com/default_files/default.png"
+                                        })()}")`,
+                                        backgroundRepeat: "no-repeat",
+                                        backgroundPosition: "center",
+                                        backgroundSize: "100% 100%",
+                                        backgroundColor: "black",
+                                        borderRadius: "50%",
+                                    }}/>
+                            else 
+                                return item.icon
+                        })()}
+                        <p>{item.title}</p>
                     </DirectWrapper>
-                </Link>
+                </div>
             )
         })
     }
@@ -135,42 +204,74 @@ const HeaderComponent = (props) => {
         )
     }
 
+    const resetPostState = (e) => {
+        dispatch(actions.handleSection({...sectionDefaultValues}))
+        dispatch(actions.setSectionEdit(false, -1))
+        dispatch(actions.setDefaultProgressingSection())
+        dispatch(actions.setOnProgress("post", true))
+        dispatch(actions.setOnProgress("heading", true))
+        dispatch(actions.setOnProgress("section", false))
+        dispatch(actions.resetSelectedList())
+        setTitlePopUp(false)
+
+        // send a request to create a new post from post title
+        const formData = new FormData()
+        formData.append("event", "create_new_post")
+        formData.append("user_code", user.info.code)
+        formData.append("post_title", form.post.post_title)
+        axiosInstance.post("blog/posts/", formData)
+        .then((res) => {
+            // if (res.data.)
+            console.log(res)
+            if (res.status === 201) {
+                const post = res.data.post
+                dispatch(actions.addPost({...post}))
+                dispatch(actions.handlePost({...form.post, ...post}))
+                dispatch(actions.setPostEdit(true))
+                history.push("/new/post/")
+            }
+        })
+        .catch((err) => {console.log(err)})
+    }
+
     return (
         <HeaderWrapper login={user.login}>
+            {titlePopUp && <PostTitlePopUpComponent
+                resetPostState={resetPostState}
+                setTitlePopUp={setTitlePopUp} />}
+            
+            {popUp && <NewPostPopUpComponent
+                setPopUp={setPopUp}
+                setTitlePopUp={setTitlePopUp} />}
+
             <LogoSection login={user.login}>
                 <div className="logo"></div>
             </LogoSection>
             {(() => {
-                if (user.login) {
-                    return (
-                        <React.Fragment>
-                            {(width > 600) && renderDesktopNav()}
+                return (
+                    <React.Fragment>
+                        {(width > 600) && renderDesktopNav()}
 
-                            {(() => {
-                                if (width > 600) {
-                                    return renderDesktopNav()
-                                } 
-                                
-                                else if (width < 600 && burger) {
-                                    return renderDesktopNav()
-                                } 
-                                
-                                // else if (width < 768 && !burger) {
-                                //     return <React.Fragment></React.Fragment>
-                                // }
-                            })()}
+                        {(() => {
+                            if (width > 600) {
+                                return renderDesktopNav()
+                            } 
+                            
+                            else if (width < 600 && burger) {
+                                return renderDesktopNav()
+                            } 
+                        })()}
 
-                            {(width < 600) && <MobileNavSection>
-                                <i  
-                                    className={`${burger ? "fas fa-times" : "fas fa-bars"} burger-icon-wapper`}
-                                    onClick={() => {
-                                        setBurger(!burger)
-                                    }} />
+                        {(width < 600) && <MobileNavSection>
+                            <i  
+                                className={`${burger ? "fas fa-times" : "fas fa-bars"} burger-icon-wapper`}
+                                onClick={() => {
+                                    setBurger(!burger)
+                                }} />
 
-                            </MobileNavSection>}
-                        </React.Fragment>
-                    )
-                }
+                        </MobileNavSection>}
+                    </React.Fragment>
+                )
             })()}
         </HeaderWrapper>
     )
@@ -178,36 +279,51 @@ const HeaderComponent = (props) => {
 
 export { HeaderComponent }
 
+const NewPostTitlePopup = styled.div``;
+
+const NewPostPopUpWrapper = styled.div`
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    top: 0px;
+    left: 0px;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding-top: 200px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-content: center;
+    z-index: 1;
+
+    div.new-post-popup {
+        height: 350px;
+        width: 350px;
+        background-color: khaki;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-content: center;
+    }
+`;
 
 const HeaderWrapper = styled.div`
     display: grid;
     height: auto;
     min-height: 80px;
     width: 100%;
-    grid-template-columns: ${props => (props.login) ? "15% 85%" : "100%"};
+    grid-template-columns: "5% 15% 75% 5%";
     grid-template-rows: auto;
-    grid-template-areas: ${props => (props.login) ? '"logo desktop_nav"' : '"logo"'};
+    grid-template-areas: ". logo desktop_nav .";
     grid-auto-flow: row;
     background-color: white;
-    justify-content: center;
-    align-content: center;
+    /* justify-content: center;
+    align-content: center; */
+    /* position: relative; */
 
     @media only screen and (max-width: 600px) {
-        grid-template-columns: ${
-            props => (props.login) 
-                ? "85% 15%" 
-                : "100%"
-            };
-        grid-template-rows: ${
-            props => (props.login) 
-                ? "minmax(0, 1fr) minmax(0, auto)" 
-                : "minmax(0, 1fr)"
-            };
-        grid-template-areas: ${
-            props => (props.login) 
-                ? '"logo mobile_nav" "desktop_nav desktop_nav"' 
-                : '"logo"'
-            };
+        grid-template-columns: "85% 15%";
+        grid-template-rows: "minmax(0, 1fr) minmax(0, auto)"; 
+        grid-template-areas: "logo mobile_nav" "desktop_nav desktop_nav";
     }
 `;
 
@@ -216,7 +332,8 @@ const LogoSection = styled.div`
     height: 80px;
     width: 100%;
     display: flex;
-    justify-content: ${props => (props.login) ? "flex-start" : "center"};
+    padding: 5px;
+    justify-content: "flex-start";
     
     div.logo {
         width: 100px;
@@ -230,7 +347,7 @@ const DesktopNavSection = styled.div`
     display: flex;
     height: 100px;
     width: 100%;
-    background-color: white;
+    background-color: honeydew;
     align-items: center;
     justify-content: right;
     margin-bottom: 10px;
@@ -248,6 +365,7 @@ const DesktopNavSection = styled.div`
         border: 2px solid black;
         margin: 10px;
         border-radius: 50%;
+        pointer-events: none;
 
         @media only screen and (max-width: 600px) {
             margin: 0;
@@ -331,10 +449,11 @@ const MobileNavSection = styled.div`
     grid-area: mobile_nav;
     height: auto;
     width: 100%;
-    background-color: white;
+    background-color: blue;
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
+    padding-right: 5px;
 
     .burger-icon-wapper {
         height: 45px;

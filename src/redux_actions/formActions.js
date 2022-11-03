@@ -22,6 +22,20 @@ export const handleSection = (data) => dispatch => {
     })
 }
 
+export const updatePostForm = (data) => dispatch => {
+    dispatch({
+        type: actionTypes.UPDATE_POST_FORM,
+        payload: data
+    })
+}
+
+export const updateSectionForm = (data) => dispatch => {
+    dispatch({
+        type: actionTypes.UPDATE_SECTION_FORM,
+        payload: data
+    })
+}
+
 export const handleFormStatus = (form_name, data) => dispatch => {
     dispatch({
         type: actionTypes.HANDLE_FORM_STATUS,
@@ -39,5 +53,22 @@ export const handleFormImages = (from, images) => dispatch => {
             from: from,
             images: images
         }
+    })
+}
+
+export const updatePostSection = (index, section) => dispatch => {
+    dispatch({
+        type: actionTypes.UPDATE_POST_SECTION,
+        payload: {
+            index: index,
+            section: section
+        }
+    })
+}
+
+export const setUnfinishedPost = (post) => dispatch => {
+    dispatch({
+        type: actionTypes.SET_UNFINISHED_POST,
+        payload: post
     })
 }

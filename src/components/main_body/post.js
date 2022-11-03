@@ -3,48 +3,55 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { useSelector, useDispatch } from "react-redux";
 import * as actions from "redux_actions/appActions";
-
+import axiosInstance from "axios_instance/axios_instance";
+import { useHistory } from "react-router-dom";
+import { deleteManyPosts, deleteAllPosts } from "./helper";
+import { DeleteButtonComponent, EditButtonComponent, ViewButtonComponent } from "./toolFunctions";
 
 const PostComponent = (props) => {
     // create later
+    const post = props.post
 
     useEffect(() => {
-        // console.log(props)
+        console.log(post)
     }, [])
 
-    const dateObj = new Date(props.post_date);
+    const history = useHistory()
+
+    const dateObj = new Date(post.post_date)
 
     const dispatch = useDispatch()
+    const user = useSelector((state) => state.user)
     const app = useSelector((state) => state.app)
 
     return (
-        <PostComponentWrapper>
+        <PostComponentWrapper className={`post-wrapper post-${post.post_code}`}>
             <div className="select-box" hidden={app.selecting ? false : true}>
                 <i 
                     class={(() => {
-                        let selected_posts = [...app.post_selected]
-                        let post_code = props.post_code
-                        let idx = selected_posts.findIndex((post) => post === post_code)
+                        let selected_codes = [...app.post_selected]
+                        let post_code = post.post_code
+                        let idx = selected_codes.findIndex((code) => code === post_code)
 
                         if (idx === -1) {
-                            return "fa fa-square-o"
+                            return "check-box-btn fa fa-square-o"
                         } else {
-                            return "fa fa-check-square-o"
+                            return "check-box-btn fa fa-check-square-o"
                         }
                         
                     })()} 
                     onClick={(() => {
-                        dispatch(actions.appendToSelectedList([props.post_code]))
+                        dispatch(actions.appendToSelectedList([post.post_code]))
                     })}
                     aria-hidden="true"></i>
             </div>
 
             <div className="post-image">
-
+                {post.post_image !== null && <img src={post.post_image.image_content} alt="" />}
             </div>
 
             <div className="post-header">
-                <p className="post-title">{props.post_title}</p>
+                <p className="post-title">{post.post_title}</p>
                 <p className="post-date">{dateObj.toLocaleDateString().toString()}</p>
                 <div className="post-public"></div>
             </div>
@@ -56,15 +63,30 @@ const PostComponent = (props) => {
 
                 <div className="content-wrapper">
                     <p className="content">
-                        {props.post_summary}
+                        {post.post_summary}
                     </p>
                 </div>
             </div>
 
             <div className="post-functions">
-                <input type="button" value="Edit" />
-                <input type="button" value="Delete" />
-                <input type="button" value="View" />
+                {(() => {
+                    if (user.info !== null) {
+                        if (user.info.code === post.post_author.code) {
+                            return (
+                                <React.Fragment>
+                                    <EditButtonComponent
+                                        post={post} />
+                                    <DeleteButtonComponent
+                                        user_code={user.info.code}
+                                        post_codes={[post.post_code]} />
+                                </React.Fragment>
+                            )
+                        }
+                    } 
+                })()}
+                
+                <ViewButtonComponent
+                    view_url={`/home/posts/${post.post_code}/`} />
             </div>
         </PostComponentWrapper>
     )
@@ -84,12 +106,19 @@ const PostComponentWrapper = styled.div`
         "post_image post_header"
         "post_image post_content"
         "post_image post_functions";
+    opacity: 1;
+    transition: opacity 1s ease-out;
 
     div.post-image {
         grid-area: post_image;
         height: 99%;
         width: 99%;
         background-color: blanchedalmond;
+
+        img {
+            height: 100%;
+            width: 100%;
+        }
     }
 
     div.post-header {
@@ -133,6 +162,13 @@ const PostComponentWrapper = styled.div`
     div.select-box {
         position: absolute;
         top: 0px;
+        z-index: 1;
+        background-color: white;
+    }
+
+    div.fading-effect {
+        display: none;
+        height: 400px;
     }
 `;
 
